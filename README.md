@@ -47,7 +47,7 @@ Always install into a virtual environment, never into the system Python.
 ## Install on Windows (PowerShell)
 
 ```powershell
-git clone <repository-url> vistlabel
+git clone https://github.com/It4innovations/VISTLabel.git vistlabel
 cd vistlabel
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -66,7 +66,7 @@ to its `bin` directory.
 ## Install on Linux
 
 ```bash
-git clone <repository-url> vistlabel
+git clone https://github.com/It4innovations/VISTLabel.git vistlabel
 cd vistlabel
 python3.12 -m venv .venv
 source .venv/bin/activate
@@ -94,7 +94,7 @@ with CUDA, so they stay unavailable there.
 
 ```bash
 brew install python@3.12 ffmpeg
-git clone <repository-url> vistlabel
+git clone https://github.com/It4innovations/VISTLabel.git vistlabel
 cd vistlabel
 python3.12 -m venv .venv            # /opt/homebrew/bin/python3.12 if not on PATH
 source .venv/bin/activate
