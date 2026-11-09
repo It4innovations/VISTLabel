@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "model_classes": {
+    "0": "conical_tube_50ml",
+    "1": "conical_tube_15ml",
+    "2": "culture_flask",
+    "3": "pipette",
+    "4": "glove",
+    "5": "tube_1ml",
+    "6": "microcentrifuge_tube"
+  }
+}

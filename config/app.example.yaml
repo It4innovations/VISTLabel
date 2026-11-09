@@ -1,0 +1,92 @@
+﻿# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+# SPDX-License-Identifier: MIT
+
+# Static, human-edited application configuration.
+#
+# Copy this file to config/app.yaml and adjust for your workstation. Secrets
+# or machine-specific paths may instead be supplied via environment
+# variables prefixed VISTLABEL_, using __ as the nested delimiter, e.g.
+# VISTLABEL_WORKSPACE__ROOT=D:\vistlabel-workspace overrides workspace.root.
+#
+# Do not commit config/app.yaml itself (see .gitignore) -- it is machine
+# specific once checkpoint paths are filled in.
+
+schema_version: 1
+
+workspace:
+  root: ./workspace
+
+upload:
+  allowed_extensions: [.mp4]
+  maximum_file_size_gb: 50
+  chunk_size_mb: 8
+  minimum_free_disk_space_gb: 20
+  # Normalize variable-frame-rate camera recordings before indexing so
+  # frame-by-frame annotation and propagation use a stable timeline.
+  # Capped at the recording's own average rate, so a 15 FPS clip is never
+  # padded with duplicate frames up to 30.
+  normalize_variable_frame_rate: true
+  normalized_frame_rate: 30
+
+runtime:
+  cuda_device: auto
+  # float16 by default: several supported workstation GPUs (e.g. Turing,
+  # compute capability 7.5) lack native bfloat16 tensor core support.
+  # Override to bfloat16 only after confirming the target GPU benefits.
+  default_dtype: float16
+  maximum_concurrent_gpu_jobs: 1
+  default_backend: fake
+  # Directory containing ffmpeg/ffprobe, checked before PATH. Only needed
+  # if they are installed but not on PATH.
+  # ffmpeg_dir: D:\apps\ffmpeg
+
+models:
+  sam21:
+    enabled: false
+    variant: sam2.1_hiera_large
+    # A local directory (Hugging Face snapshot), not the single .pt file
+    # Meta's own repo uses -- produced by:
+    #   python scripts/download_models.py --model sam21-base-plus
+    checkpoint: ./models/sam2.1-hiera-base-plus
+    code_revision: null
+
+  # Runs facebook/sam3, not SAM 3.1: Meta ships 3.1 as a raw .pt with no
+  # transformers integration. Text/concept search (Sam3VideoModel) plus
+  # point/box/mask prompts and video propagation (Sam3TrackerVideoModel),
+  # both from this one checkpoint; only one of the two is in GPU memory at
+  # a time, so switching between text search and point prompts reloads.
+  # Also usable as yolo_sam's refiner_backend. Fetch with:
+  #   python scripts/download_models.py --model sam3
+  # (gated repo: accept the licence, then set HF_TOKEN)
+  sam3:
+    enabled: false
+    variant: sam3
+    checkpoint: ./models/sam3
+    code_revision: null
+    require_startup_diagnostic: true
+
+  yolo_sam:
+    enabled: false
+    yolo_checkpoint: ./models/lab_objects_yolo_seg.pt
+    class_mapping: ./config/yolo_class_mapping.json
+    refiner_backend: sam21
+    detection_stride_frames: 30
+
+tracking:
+  default_chunk_frames: 200
+  checkpoint_after_chunk: true
+
+export:
+  image_format: jpg
+  jpeg_quality: 95
+  yolo_multipart_policy: minimal_bridge
+  always_include_coco_exact_annotations: true
+  # segmentation (masks/polygons) or bbox (detection boxes derived from the masks)
+  annotation_type: segmentation
+  # ultralytics (images/ + labels/ + dataset.yaml) or coco (train/ + valid/ with
+  # _annotations.coco.json -- the layout RF-DETR trains from)
+  dataset_layout: ultralytics
+
+logging:
+  level: INFO
+  json_output: true

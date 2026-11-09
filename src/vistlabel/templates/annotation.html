@@ -1,0 +1,374 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+<!doctype html>
+{# Fallback also refreshes assets when an older running server reloads this template. #}
+{% set asset_version = asset_version | default('sam3-text-20260916') %}
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISTLabel — {{ project.name }}</title>
+  {% include "_theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v={{ asset_version }}" />
+  <link rel="stylesheet" href="{{ url_for('static', path='css/annotation.css') }}?v={{ asset_version }}" />
+</head>
+<body
+  id="annotation-body"
+  data-project-id="{{ project.project_id }}"
+  data-project-revision="{{ project.revision }}"
+  data-frame-count="{{ project.source.frame_count }}"
+  data-frame-width="{{ project.source.width }}"
+  data-frame-height="{{ project.source.height }}"
+  data-video-fps="{{ project.source.nominal_fps }}"
+  data-last-opened-frame="{{ project.ui_state.last_opened_frame }}"
+  data-selected-object-id="{{ project.ui_state.selected_object_id or '' }}"
+  data-selected-backend-id="{{ project.ui_state.selected_backend_id }}"
+>
+  <header class="lv-job-header">
+    <a class="lv-job-back" href="/" title="Back to projects">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      Projects
+    </a>
+
+    <div class="lv-job-title">
+      <strong>{{ project.name }}</strong>
+      <span>{{ project.source.width }}&times;{{ project.source.height }} &middot; {{ project.source.frame_count }} frames</span>
+    </div>
+
+    <div class="lv-job-group">
+      <button type="button" class="lv-icon-button" id="undo-button" title="Undo (Ctrl+Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+        </svg>
+        Undo
+      </button>
+      <button type="button" class="lv-icon-button" id="redo-button" title="Redo (Ctrl+Y)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+        </svg>
+        Redo
+      </button>
+    </div>
+
+    <div id="frame-nav">
+      <button type="button" id="prev-frame-button" title="Previous frame (&larr;)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M15 5v14l-9-7z" /></svg>
+      </button>
+      <input type="range" id="frame-slider" min="0" value="0" aria-label="Frame" />
+      <input type="number" id="frame-number-input" min="0" value="0" aria-label="Frame number" />
+      <span id="frame-count-label"></span>
+      <button type="button" id="next-frame-button" title="Next frame (&rarr;)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 5v14l9-7z" /></svg>
+      </button>
+      <button type="button" id="play-button" title="Play (Space)" aria-label="Play" aria-pressed="false">
+        <svg class="lv-icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z" /></svg>
+        <svg class="lv-icon-pause" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z" /></svg>
+      </button>
+      <select id="playback-speed" aria-label="Playback speed" title="Playback speed, relative to the video's frame rate">
+        <option value="0.25">¼×</option>
+        <option value="0.5">½×</option>
+        <option value="1" selected>1×</option>
+        <option value="2">2×</option>
+      </select>
+    </div>
+
+    <label class="lv-backend-picker">
+      Backend
+      <select id="backend-select" aria-label="Segmentation backend"></select>
+    </label>
+
+    <label class="lv-backend-picker">
+      Status
+      <select
+        id="project-status-select"
+        class="lv-status-select lv-status-{{ project.status }}"
+        data-project-id="{{ project.project_id }}"
+        aria-label="Project status"
+      >
+        <option value="new" {% if project.status == "new" %}selected{% endif %}>New</option>
+        <option value="in_progress" {% if project.status == "in_progress" %}selected{% endif %}>In progress</option>
+        <option value="done" {% if project.status == "done" %}selected{% endif %}>Done</option>
+        <option value="archived" {% if project.status == "archived" %}selected{% endif %}>Archived</option>
+      </select>
+    </label>
+
+    <button type="button" class="lv-icon-button" id="open-auto-preannotate-button" title="Automatic pre-annotation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 3 1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" /><path d="M18 15.5 19 18l2.5 1-2.5 1-1 2.5-1-2.5L14.5 19l2.5-1z" />
+      </svg>
+      Auto
+    </button>
+
+    <button type="button" class="lv-icon-button" id="open-tracking-runs-button" title="Propagation runs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 12a9 9 0 1 0 9-9" /><path d="M3 4v5h5" /><path d="M12 8v4l3 2" />
+      </svg>
+      Runs
+    </button>
+
+    <button
+      type="button"
+      class="lv-icon-button"
+      id="open-export-button"
+      data-project-title="{{ project.name }}"
+      title="Export dataset"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="m7 10 5 5 5-5" /><path d="M12 15V3" />
+      </svg>
+      Export
+    </button>
+
+    {# A new tab, so reading the help never leaves an edit or a running
+       propagation behind. #}
+    <a
+      class="lv-icon-button"
+      id="open-help-link"
+      href="/help/user-guide"
+      target="_blank"
+      rel="noopener"
+      title="Help: user guide and keyboard shortcuts (opens in a new tab)"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6" /><path d="M12 17h.01" />
+      </svg>
+      Help
+    </a>
+
+    <button type="button" class="lv-icon-button lv-theme-toggle" id="theme-toggle"></button>
+  </header>
+
+  <main id="annotation-app">
+    <div class="lv-tool-rail" id="toolbar" role="toolbar" aria-label="Annotation tools">
+      <button type="button" class="tool-button" data-tool="point_positive" title="Positive point (P or 1)" aria-label="Positive point">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="8" /><path d="M12 8.5v7M8.5 12h7" />
+        </svg>
+      </button>
+      <button type="button" class="tool-button" data-tool="point_negative" title="Negative point (N or 2)" aria-label="Negative point">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="8" /><path d="M8.5 12h7" />
+        </svg>
+      </button>
+
+      <span class="lv-rail-divider"></span>
+
+      <button type="button" class="tool-button" data-tool="brush" title="Brush (B or 3). Left-drag paints, right-drag erases." aria-label="Brush">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 14.5 19 5a2.1 2.1 0 0 1 3 3l-9.5 9.5" />
+          <path d="M9.5 14.5a3 3 0 0 1 0 4.2c-1.5 1.5-5 1.3-7 1.3.8-1.8.3-4.5 1.8-6a3 3 0 0 1 4.2 0z" />
+        </svg>
+      </button>
+      <button type="button" class="tool-button" data-tool="eraser" title="Eraser (E or 4)" aria-label="Eraser">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m4 16 6-6 7 7-3 3H7z" /><path d="M10 10 15 5l6 6-4 4" /><path d="M4 21h16" />
+        </svg>
+      </button>
+      <button type="button" class="tool-button" data-tool="axis_hint" title="Axis hint (A or 5)" aria-label="Axis hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="6" cy="18" r="2.2" /><circle cx="18" cy="6" r="2.2" /><path d="m8 16 8-8" />
+        </svg>
+      </button>
+    </div>
+
+    <section id="canvas-panel">
+      <div id="canvas-scroll">
+        <div id="canvas-stage">
+          <canvas id="frame-canvas"></canvas>
+          <div id="box-layer" aria-hidden="true"></div>
+          <div id="point-layer" aria-hidden="true"></div>
+          <div id="cursor-layer" aria-hidden="true"><div id="brush-cursor" hidden></div></div>
+        </div>
+      </div>
+
+      <div class="lv-action-bar">
+        <div class="lv-action-group">
+          <button type="button" id="accept-candidate-button" disabled>Accept candidate</button>
+          <button type="button" id="clear-points-button">Clear points</button>
+          <button type="button" id="save-axis-hint-button" disabled>Save axis hint</button>
+          <button type="button" id="delete-axis-hint-button" title="Remove the saved axis hint from the selected object" disabled>Delete axis hint</button>
+        </div>
+
+        <div class="lv-action-group">
+          <span class="lv-action-label">Frame</span>
+          <button
+            type="button"
+            id="delete-frame-button"
+            title="Leave this frame out of every export and the review queue. The video frame and its masks stay, so it can be restored."
+          >Delete frame</button>
+          <span class="lv-chip lv-frame-excluded-badge" id="frame-excluded-badge" hidden>Deleted</span>
+        </div>
+
+        <div class="lv-action-group">
+          <span class="lv-action-label">Occluder</span>
+          <select id="occluder-select" aria-label="Occluding object"></select>
+          <button type="button" id="mark-occluder-button">Mark</button>
+          <span id="occlusion-edges-summary"></span>
+        </div>
+
+        <div class="lv-action-group">
+          <span class="lv-action-label">Propagate</span>
+          <select id="propagation-direction" aria-label="Propagation direction">
+            <option value="forward">Forward</option>
+            <option value="backward">Backward</option>
+          </select>
+          <input type="number" id="propagation-end-frame" min="0" aria-label="Propagate to frame" />
+          <button type="button" id="propagate-button">Run</button>
+          <button type="button" id="cancel-propagation-button" disabled>Cancel</button>
+          <label class="lv-toggle-row" for="propagation-notify"
+                 title="Play a sound and show a browser notification when propagation finishes">
+            <input type="checkbox" id="propagation-notify" />
+            Notify
+          </label>
+          <span id="propagation-status"></span>
+        </div>
+
+        <div class="lv-action-group lv-action-group-end">
+          <label class="lv-action-label" for="bar-review-status">Review status:</label>
+          <select id="bar-review-status" data-status="unreviewed"
+                  title="This frame's review status; a change is saved at once (R marks it reviewed)">
+            <option value="unreviewed">Unreviewed</option>
+            <option value="needs_review">Needs review</option>
+            <option value="reviewed">Reviewed</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="status-line" role="status"></p>
+    </section>
+
+    <aside class="lv-side-panel" id="review-panel">
+      <div class="lv-tabs" role="tablist">
+        <button type="button" class="lv-tab" role="tab" id="tab-objects" aria-controls="panel-objects" aria-selected="true">Objects</button>
+        <button type="button" class="lv-tab" role="tab" id="tab-review" aria-controls="panel-review" aria-selected="false">Review</button>
+        <button type="button" class="lv-tab" role="tab" id="tab-queue" aria-controls="panel-queue" aria-selected="false">
+          Queue <span class="lv-tab-badge" id="review-queue-count" hidden>0</span>
+        </button>
+        <button type="button" class="lv-tab" role="tab" id="tab-splits" aria-controls="panel-splits" aria-selected="false">Splits</button>
+      </div>
+
+      <div class="lv-tab-panels">
+        <div class="lv-tab-panel" id="panel-objects" role="tabpanel" aria-labelledby="tab-objects">
+          <section id="concept-search-controls" aria-label="Text segmentation">
+            <label for="concept-text">Find objects by description</label>
+            <input id="concept-text" type="text" maxlength="500" placeholder="e.g. pipette" />
+            <button type="button" class="lv-btn lv-btn-primary" id="concept-search-button" disabled>Find in this frame</button>
+            <p id="concept-status" class="lv-hint" role="status"></p>
+            <div id="concept-results" hidden>
+              <label for="concept-proposal">Matching instance</label>
+              <select id="concept-proposal"></select>
+              <label for="concept-label">Confirm class label</label>
+              <input id="concept-label" type="text" maxlength="200" list="object-label-suggestions" />
+              <button type="button" class="lv-btn lv-btn-primary" id="concept-accept-button">Accept as new object</button>
+              <button type="button" class="lv-btn" id="concept-dismiss-button">Dismiss results</button>
+            </div>
+          </section>
+          <div id="new-object-controls">
+            <input
+              type="text"
+              id="new-object-label"
+              list="object-label-suggestions"
+              placeholder="Object name"
+              aria-label="New object name"
+              maxlength="200"
+              autocomplete="off"
+            />
+            <datalist id="object-label-suggestions"></datalist>
+            <button type="button" id="add-object-button">+ New</button>
+          </div>
+          <details id="class-section" hidden>
+            <summary>Class order <span id="class-count"></span></summary>
+            <p class="lv-hint">The number is the class id in exports (YOLO and COCO).</p>
+            <ol id="class-list"></ol>
+          </details>
+          <ul id="object-list"></ul>
+          <button type="button" id="toggle-offframe-objects" class="lv-link-button" hidden></button>
+        </div>
+
+        <div class="lv-tab-panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
+          <h2 class="lv-panel-heading">Frame review</h2>
+          <select id="review-status">
+            <option value="unreviewed">Unreviewed</option>
+            <option value="needs_review">Needs review</option>
+            <option value="reviewed">Reviewed</option>
+          </select>
+          <textarea id="review-comment" placeholder="Review comment (optional)"></textarea>
+          <button type="button" id="save-review-button">Save review</button>
+          <p class="lv-hint">Shortcut: <kbd>R</kbd> marks the current frame reviewed.</p>
+
+          <h2 class="lv-panel-heading">All frames</h2>
+          <button type="button" id="mark-all-reviewed-button">Mark all annotated frames reviewed</button>
+          <p class="lv-hint" id="mark-all-reviewed-status">
+            Every frame with at least one mask that isn't reviewed yet, including
+            frames in the queue. You'll see how many before anything changes.
+          </p>
+        </div>
+
+        <div class="lv-tab-panel" id="panel-queue" role="tabpanel" aria-labelledby="tab-queue" hidden>
+          <div class="lv-panel-heading">
+            Frames needing review
+            <button type="button" class="lv-link-button" id="refresh-review-queue">Refresh</button>
+          </div>
+          <ul id="review-queue-list" class="lv-queue-list"></ul>
+        </div>
+
+        <div class="lv-tab-panel" id="panel-splits" role="tabpanel" aria-labelledby="tab-splits" hidden>
+          <div class="lv-panel-heading">Train / val / excluded</div>
+          <p class="lv-hint">
+            Frame ranges are inclusive. Unassigned frames are left to the
+            export's frame-selection policy, never silently treated as train.
+          </p>
+
+          <div id="split-list" class="lv-split-list"></div>
+
+          <div class="lv-split-add">
+            <input type="number" id="split-start" class="lv-input" min="0" placeholder="from" />
+            <input type="number" id="split-end" class="lv-input" min="0" placeholder="to" />
+            <select id="split-label" class="lv-select">
+              <option value="train">train</option>
+              <option value="val">val</option>
+              <option value="excluded">excluded</option>
+            </select>
+            <button type="button" id="add-split-button">Add</button>
+          </div>
+
+          <button type="button" id="save-splits-button" class="lv-btn lv-btn-primary lv-full-width">
+            Save splits
+          </button>
+          <p id="split-status" class="lv-hint"></p>
+        </div>
+      </div>
+
+      <details class="lv-appearance" open>
+        <summary>Appearance</summary>
+        <div class="lv-appearance-body">
+          <div class="lv-slider-row">
+            <label for="mask-opacity">Mask opacity</label>
+            <input type="range" id="mask-opacity" min="0" max="100" value="55" />
+          </div>
+          <label class="lv-toggle-row" for="show-boxes">
+            <input type="checkbox" id="show-boxes" />
+            Show bounding boxes
+          </label>
+          <div class="lv-slider-row">
+            <label for="zoom-slider" title="Ctrl + mouse wheel over the frame">Zoom</label>
+            <input type="range" id="zoom-slider" min="25" max="300" value="100" />
+          </div>
+          <div class="lv-slider-row">
+            <label for="brush-radius" title="Shift + mouse wheel over the frame">Brush / eraser radius</label>
+            <input type="range" id="brush-radius" min="1" max="60" value="10" />
+          </div>
+        </div>
+      </details>
+    </aside>
+  </main>
+
+  {% include "_export_dialog.html" %}
+  {% include "_auto_preannotate_dialog.html" %}
+  {% include "_tracking_runs_dialog.html" %}
+
+  <script type="module" src="{{ url_for('static', path='js/annotation-canvas.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

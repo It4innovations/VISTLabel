@@ -1,0 +1,29 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Operational counters and environment checks (health + metrics).
+   Read-only: this is the same data the /api/v1/health and
+   /api/v1/metrics endpoints serve to an operator's monitoring. #}
+<div class="lv-modal-backdrop" id="metrics-modal" hidden>
+  <div class="lv-modal" role="dialog" aria-modal="true" aria-labelledby="metrics-heading">
+    <div class="lv-modal-header">
+      <h2 id="metrics-heading">System status</h2>
+      <button type="button" class="lv-modal-close" id="metrics-close-button" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="lv-modal-body">
+      <h3 class="lv-panel-heading">Environment</h3>
+      <dl class="lv-kv" id="health-list"></dl>
+
+      <h3 class="lv-panel-heading" style="margin-top: 20px">Model backends</h3>
+      <dl class="lv-kv" id="backends-list"></dl>
+
+      <h3 class="lv-panel-heading" style="margin-top: 20px">Counters</h3>
+      <dl class="lv-kv" id="metrics-list"></dl>
+    </div>
+
+    <div class="lv-modal-footer">
+      <button type="button" class="lv-btn" id="metrics-refresh-button">Refresh</button>
+      <button type="button" class="lv-btn" id="metrics-dismiss-button">Close</button>
+    </div>
+  </div>
+</div>

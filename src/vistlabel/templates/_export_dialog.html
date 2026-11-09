@@ -1,0 +1,149 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Shared dataset-export dialog. Included by both the
+   project list and the annotation workspace; exports.js wires it up and
+   fills in which project it is acting on when it is opened. #}
+<div class="lv-modal-backdrop" id="export-modal" hidden>
+  <div class="lv-modal lv-modal-wide" role="dialog" aria-modal="true" aria-labelledby="export-heading">
+    <div class="lv-modal-header">
+      <h2 id="export-heading">Export dataset</h2>
+      <button type="button" class="lv-modal-close" id="export-close-button" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="lv-modal-body">
+      <p class="lv-modal-subject" id="export-project-name"></p>
+
+      <div class="lv-field">
+        <label class="lv-label" for="export-policy">Which frames</label>
+        <select id="export-policy" class="lv-select" style="width: 100%">
+          <option value="reviewed_only">Reviewed frames only</option>
+          <option value="annotated_only">All annotated frames (reviewed or not)</option>
+          <option value="manually_edited_only">Manually edited only</option>
+          <option value="every_nth_reviewed">Every nth reviewed</option>
+          <option value="every_nth_annotated">Every nth annotated</option>
+          <option value="selected_intervals">Selected intervals</option>
+          <option value="all_frames">Every frame that has annotation data</option>
+        </select>
+      </div>
+
+      <div class="lv-field" id="export-every-nth-field" hidden>
+        <label class="lv-label" for="export-every-nth" id="export-every-nth-label">n (take every nth reviewed frame)</label>
+        <input type="number" id="export-every-nth" class="lv-input" min="1" value="1" style="width: 100%" />
+      </div>
+
+      <div class="lv-field" id="export-intervals-field" hidden>
+        <label class="lv-label" for="export-intervals">Frame intervals</label>
+        <input
+          type="text"
+          id="export-intervals"
+          class="lv-input"
+          placeholder="0-99, 150-200"
+          style="width: 100%"
+        />
+        <p class="lv-hint">Inclusive on both ends, comma separated.</p>
+      </div>
+
+      <div class="lv-field lv-warning" id="export-all-frames-field" hidden>
+        <label>
+          <input type="checkbox" id="export-acknowledge-all" />
+          Include <strong>every</strong> frame that carries annotation data
+        </label>
+        <p class="lv-hint">
+          Takes each frame the project has touched, including ones whose
+          objects were all removed. Can produce a very large archive, so the
+          request is rejected unless this is ticked. Frames never annotated at
+          all are not covered by this &mdash; add those with the negative-frame
+          fraction below.
+        </p>
+      </div>
+
+      <div class="lv-field-row">
+        <div class="lv-field">
+          <label class="lv-label" for="export-annotation-type">Annotations</label>
+          <select id="export-annotation-type" class="lv-select">
+            <option value="">Project default</option>
+            <option value="segmentation">Segmentation masks</option>
+            <option value="bbox">Bounding boxes</option>
+          </select>
+          <p class="lv-hint">Boxes are the tight box around each mask.</p>
+        </div>
+
+        <div class="lv-field">
+          <label class="lv-label" for="export-layout">Dataset format</label>
+          <select id="export-layout" class="lv-select">
+            <option value="">Project default</option>
+            <option value="ultralytics">Ultralytics YOLO</option>
+            <option value="coco">COCO (RF-DETR)</option>
+          </select>
+          <p class="lv-hint">
+            COCO writes <code>train/</code> and <code>valid/</code> folders, each with
+            an <code>_annotations.coco.json</code>.
+          </p>
+        </div>
+      </div>
+
+      <div class="lv-field-row">
+        <div class="lv-field">
+          <label class="lv-label" for="export-image-format">Image format</label>
+          <select id="export-image-format" class="lv-select">
+            <option value="">Project default</option>
+            <option value="jpg">JPG</option>
+            <option value="png">PNG</option>
+          </select>
+        </div>
+
+        <div class="lv-field">
+          <label class="lv-label" for="export-negative-fraction">Negative frames</label>
+          <input
+            type="number"
+            id="export-negative-fraction"
+            class="lv-input"
+            min="0"
+            max="1"
+            step="0.05"
+            value="0"
+          />
+          <p class="lv-hint">
+            Fraction of never-annotated frames to add with empty labels
+            (1 = all of them), spread evenly rather than as one block.
+          </p>
+        </div>
+      </div>
+
+      <div class="lv-field" id="export-multipart-field">
+        <label class="lv-label" for="export-multipart">Multi-part masks in YOLO</label>
+        <select id="export-multipart" class="lv-select" style="width: 100%">
+          <option value="">Project default</option>
+          <option value="strict_error">Fail the export</option>
+          <option value="minimal_bridge">Bridge the components</option>
+          <option value="split_components">Split into separate instances</option>
+        </select>
+        <p class="lv-hint">
+          YOLO segmentation cannot represent a disconnected mask; COCO always
+          keeps the exact multi-part geometry.
+        </p>
+      </div>
+
+      <div class="lv-field" id="export-coco-exact-field">
+        <label>
+          <input type="checkbox" id="export-coco-exact" checked />
+          Always include exact COCO annotations
+        </label>
+      </div>
+
+      <p id="export-status" role="status"></p>
+      <div id="export-progress-container" hidden>
+        <progress id="export-progress" value="0" max="100"></progress>
+        <span id="export-progress-label">0%</span>
+      </div>
+
+      <h3 class="lv-panel-heading" style="margin-top: 20px">Previous exports</h3>
+      <ul id="export-history" class="lv-export-history"></ul>
+    </div>
+
+    <div class="lv-modal-footer">
+      <button type="button" class="lv-btn" id="export-cancel-button">Close</button>
+      <button type="button" class="lv-btn lv-btn-primary" id="export-start-button">Start export</button>
+    </div>
+  </div>
+</div>

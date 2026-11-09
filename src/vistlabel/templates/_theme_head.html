@@ -1,0 +1,17 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Applies the stored theme before first paint. Must stay inline and
+   synchronous: loading it as a module would run after the first paint and
+   the wrong theme would flash. Dark is the default. #}
+<script>
+  (function () {
+    try {
+      var stored = window.localStorage.getItem("vistlabel-theme");
+      if (stored === "light" || stored === "dark") {
+        document.documentElement.dataset.theme = stored;
+      }
+    } catch (error) {
+      /* storage unavailable -- fall through to the dark default */
+    }
+  })();
+</script>

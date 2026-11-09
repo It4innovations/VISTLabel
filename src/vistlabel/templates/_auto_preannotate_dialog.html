@@ -1,0 +1,67 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Automatic class-aware pre-annotation. Detections whose
+   resolved label name is not in this project's own labels.json are skipped
+   by the backend, never guessed -- the dialog says so rather than letting
+   an empty result look like a failure. #}
+<div class="lv-modal-backdrop" id="auto-preannotate-modal" hidden>
+  <div class="lv-modal" role="dialog" aria-modal="true" aria-labelledby="auto-preannotate-heading">
+    <div class="lv-modal-header">
+      <h2 id="auto-preannotate-heading">Automatic pre-annotation</h2>
+      <button type="button" class="lv-modal-close" id="auto-close-button" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="lv-modal-body">
+      <div class="lv-field">
+        <label class="lv-label" for="auto-backend">Backend</label>
+        <select id="auto-backend" class="lv-select" style="width: 100%"></select>
+        <p class="lv-hint" id="auto-backend-hint"></p>
+      </div>
+
+      <div class="lv-field">
+        <label class="lv-label" for="auto-frames">Frames</label>
+        <input
+          type="text"
+          id="auto-frames"
+          class="lv-input"
+          placeholder="0-99, 150 or leave empty for the current frame"
+          style="width: 100%"
+        />
+        <p class="lv-hint">
+          Ranges are inclusive. Detection runs on each listed frame, so a wide
+          range is slow &mdash; the backend's own detection stride does not
+          apply here.
+        </p>
+      </div>
+
+      <div class="lv-field">
+        <label class="lv-label" for="auto-class-ids">Class ids (optional)</label>
+        <input type="text" id="auto-class-ids" class="lv-input" placeholder="e.g. 0, 3" style="width: 100%" />
+        <p class="lv-hint">
+          Backend-specific detector class indices. Empty means everything the
+          configured class mapping knows about.
+        </p>
+      </div>
+
+      <div class="lv-warning">
+        <p class="lv-hint" style="margin: 0">
+          A detection whose label is not in this project's ontology is skipped
+          silently, so an empty result usually means the names do not line up
+          yet &mdash; create the objects once by hand and the names register.
+        </p>
+      </div>
+
+      <p id="auto-status" role="status"></p>
+      <div id="auto-progress-container" hidden>
+        <progress id="auto-progress" value="0" max="100"></progress>
+        <span id="auto-progress-label">0%</span>
+        <button type="button" class="lv-btn" id="auto-cancel-job-button">Cancel</button>
+      </div>
+    </div>
+
+    <div class="lv-modal-footer">
+      <button type="button" class="lv-btn" id="auto-dismiss-button">Close</button>
+      <button type="button" class="lv-btn lv-btn-primary" id="auto-start-button">Run</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,125 @@
+{
+  "$comment": "Keyboard and mouse shortcut registry for the Help pages. scope: workspace = anywhere in the annotation workspace except while typing in a text field; canvas = with the pointer over the frame; text field = while that field has focus; dialogs = while a dialog is open. scripts/generate_help_reference.py writes this table into docs/user-guide.md; tests/unit/test_help.py fails when that copy is stale.",
+  "shortcuts": [
+    {
+      "id": "playback.toggle",
+      "keys": "Space",
+      "scope": "workspace",
+      "description": "Play / pause the frames (also while the frame slider or number box has focus)"
+    },
+    {
+      "id": "frame.previous",
+      "keys": "←",
+      "scope": "workspace",
+      "description": "Previous frame"
+    },
+    {
+      "id": "frame.next",
+      "keys": "→",
+      "scope": "workspace",
+      "description": "Next frame"
+    },
+    {
+      "id": "undo",
+      "keys": "Ctrl+Z",
+      "scope": "workspace",
+      "description": "Undo the last brush or eraser stroke, or bring back a deleted object or class"
+    },
+    {
+      "id": "redo",
+      "keys": "Ctrl+Y",
+      "scope": "workspace",
+      "description": "Redo"
+    },
+    {
+      "id": "tool.point_positive",
+      "keys": "P / 1",
+      "scope": "workspace",
+      "description": "Positive point tool"
+    },
+    {
+      "id": "tool.point_negative",
+      "keys": "N / 2",
+      "scope": "workspace",
+      "description": "Negative point tool"
+    },
+    {
+      "id": "tool.brush",
+      "keys": "B / 3",
+      "scope": "workspace",
+      "description": "Brush tool"
+    },
+    {
+      "id": "tool.eraser",
+      "keys": "E / 4",
+      "scope": "workspace",
+      "description": "Eraser tool"
+    },
+    {
+      "id": "tool.axis_hint",
+      "keys": "A / 5",
+      "scope": "workspace",
+      "description": "Axis hint tool"
+    },
+    {
+      "id": "object.hide",
+      "keys": "H",
+      "scope": "workspace",
+      "description": "Hide / show the selected object's mask on this frame (view only, still exported)"
+    },
+    {
+      "id": "object.deactivate",
+      "keys": "D",
+      "scope": "workspace",
+      "description": "Deactivate / activate the selected object on this frame (leaves it out of the export)"
+    },
+    {
+      "id": "frame.mark_reviewed",
+      "keys": "R",
+      "scope": "workspace",
+      "description": "Mark the current frame reviewed"
+    },
+    {
+      "id": "point.add_component",
+      "keys": "Shift+Click",
+      "scope": "canvas",
+      "description": "With a point tool: add a separate visible part to the selected object's mask"
+    },
+    {
+      "id": "brush.erase",
+      "keys": "Right-drag",
+      "scope": "canvas",
+      "description": "With the brush: erase instead of paint"
+    },
+    {
+      "id": "view.zoom",
+      "keys": "Ctrl+Wheel",
+      "scope": "canvas",
+      "description": "Zoom around the pointer"
+    },
+    {
+      "id": "brush.radius",
+      "keys": "Shift+Wheel",
+      "scope": "canvas",
+      "description": "Change the brush / eraser radius"
+    },
+    {
+      "id": "text.confirm",
+      "keys": "Enter",
+      "scope": "text field",
+      "description": "In the object name box: create the object. In a class name box: rename the class. In the description box: find in this frame"
+    },
+    {
+      "id": "edit.cancel",
+      "keys": "Esc",
+      "scope": "text field",
+      "description": "Cancel a class rename, class change or merge"
+    },
+    {
+      "id": "dialog.close",
+      "keys": "Esc",
+      "scope": "dialogs",
+      "description": "Close the open dialog"
+    }
+  ]
+}

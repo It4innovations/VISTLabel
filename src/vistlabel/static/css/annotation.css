@@ -1,0 +1,1247 @@
+﻿/* Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+ * SPDX-License-Identifier: MIT */
+/* Annotation workspace (canvas + object list + review), laid out
+   like a job view: fixed top bar, vertical tool rail, centred canvas on
+   a neutral backdrop, tabbed right sidebar with a collapsible Appearance
+   block, and a status bar. Class names and every element id from the plain
+   layout are preserved -- annotation-canvas.js binds to them by id. */
+
+body#annotation-body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--lv-bg-body);
+}
+
+/* --------------------------------------------------------------- top bar */
+
+.lv-job-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+  height: 56px;
+  padding: 0 12px;
+  background: var(--lv-header-bg);
+  border-bottom: 1px solid var(--lv-border);
+}
+
+.lv-job-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  color: var(--lv-text);
+  border-radius: var(--lv-radius);
+  font-size: 14px;
+}
+
+.lv-job-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lv-text);
+}
+
+.lv-job-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.lv-job-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.lv-job-title strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lv-job-title span {
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+}
+
+/* icon buttons in the header render label text under the glyph */
+.lv-icon-button {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 44px;
+  height: 44px;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 10px;
+  color: var(--lv-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.lv-icon-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lv-primary);
+}
+
+.lv-icon-button:disabled {
+  color: var(--lv-text-disabled);
+  cursor: not-allowed;
+}
+
+.lv-icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* frame navigation lives in the header, centred like a video player's controls */
+#frame-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  /* Never narrower than its controls: with min-width 0 the playback
+     controls slid under the Backend picker at 1280px. The project title
+     (which truncates) gives way instead. */
+  min-width: min-content;
+}
+
+#frame-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: 15px;
+  color: var(--lv-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#frame-nav button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--lv-primary);
+}
+
+/* Play shows the triangle, playing shows the pause bars. */
+#play-button .lv-icon-pause,
+#play-button[aria-pressed="true"] .lv-icon-play {
+  display: none;
+}
+
+#play-button[aria-pressed="true"] .lv-icon-pause {
+  display: inline;
+}
+
+#play-button[aria-pressed="true"] {
+  color: var(--lv-primary);
+  border-color: var(--lv-primary);
+}
+
+#playback-speed {
+  height: 30px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+#frame-slider {
+  flex: 1;
+  /* Grows with the header; its own intrinsic width would hold the title
+     back more than needed on narrow screens. */
+  width: 80px;
+  min-width: 80px;
+  accent-color: var(--lv-primary);
+}
+
+#frame-number-input {
+  width: 72px;
+  height: 30px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+#frame-count-label {
+  font-size: 13px;
+  color: var(--lv-text-secondary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lv-backend-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 10px;
+  color: var(--lv-text-secondary);
+}
+
+#backend-select {
+  height: 32px;
+  min-width: 148px;
+  /* Sized to its longest option it took ~260px and squeezed the frame
+     controls at 1280px; the open list still shows full names. */
+  max-width: 180px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+/* ----------------------------------------------------------------- shell */
+
+#annotation-app {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ------------------------------------------------------------- tool rail */
+
+.lv-tool-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 52px;
+  padding: 8px 0;
+  background: var(--lv-bg-elevated);
+  border-right: 1px solid var(--lv-border);
+  overflow-y: auto;
+}
+
+.tool-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: var(--lv-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.tool-button svg {
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.tool-button:hover:not(:disabled) {
+  background: var(--lv-primary-fade);
+  color: var(--lv-primary);
+}
+
+/* Backend cannot do this operation (e.g. point prompts on SAM 3); the
+   button keeps its place in the rail and carries the reason as a tooltip. */
+.tool-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tool-button.active {
+  color: var(--lv-on-primary);
+  background: var(--lv-primary);
+  border-color: var(--lv-primary);
+  outline: none;
+}
+
+.lv-rail-divider {
+  width: 24px;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--lv-border);
+}
+
+/* ---------------------------------------------------------- canvas panel */
+
+#canvas-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+#canvas-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: flex-start;
+  /* Plain center pushes a zoomed frame's left edge out of scroll reach. */
+  justify-content: safe center;
+  padding: 16px;
+  overflow: auto;
+  background: var(--lv-canvas-bg);
+}
+
+#canvas-stage {
+  position: relative;
+  flex: none;
+}
+
+#frame-canvas {
+  display: block;
+  cursor: crosshair;
+  background: #000;
+  box-shadow: 0 0 0 1px var(--lv-border), 0 2px 16px rgba(0, 0, 0, 0.6);
+}
+
+/* "Show boxes" and the click points draw here, not on the frame canvas:
+   that canvas is frame pixels stretched by CSS zoom, so anything drawn into
+   it grows and blurs as you zoom in. Positions are percentages of the
+   frame, so they follow the zoom; sizes stay the same on screen. */
+#box-layer,
+#point-layer,
+#cursor-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#box-layer .box-outline {
+  position: absolute;
+  /* Centre the 2px line on the box edge, like a canvas stroke; the script
+     adds the 2px this takes to the width and height. */
+  margin: -1px;
+  border: 2px solid;
+}
+
+#box-layer .box-tag {
+  position: absolute;
+  height: 16px;
+  padding: 0 3px;
+  font: 12px/16px sans-serif;
+  color: #000;
+  white-space: nowrap;
+}
+
+#box-layer .box-tag.above {
+  transform: translateY(-100%);
+}
+
+#point-layer .prompt-point {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border: 1px solid #000;
+  border-radius: 50%;
+  background: #22cc44;
+}
+
+#point-layer .prompt-point.negative {
+  background: #dd2222;
+}
+
+/* Brush/eraser footprint, replacing the crosshair (annotation-canvas.js
+   sizes it in frame pixels). Black and white rings show on any frame. */
+#frame-canvas.brush-cursor-active {
+  cursor: none;
+}
+
+#brush-cursor {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 4px;
+  min-height: 4px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
+  pointer-events: none;
+}
+
+#brush-cursor[hidden] {
+  display: none;
+}
+
+#brush-cursor.eraser {
+  border-style: dashed;
+}
+
+/* contextual action strip under the canvas: candidate + occluder + propagate */
+.lv-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  background: var(--lv-bg-elevated);
+  border-top: 1px solid var(--lv-border);
+}
+
+.lv-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lv-action-group + .lv-action-group {
+  padding-left: 14px;
+  border-left: 1px solid var(--lv-border-light);
+}
+
+/* Pushed to the right end of the bar, or of its own row if it wraps. The
+   space before it sets it apart, so it needs no divider. */
+.lv-action-group.lv-action-group-end {
+  margin-left: auto;
+  padding-left: 0;
+  border-left: none;
+}
+.lv-action-bar #bar-review-status[data-status="needs_review"] {
+  color: var(--lv-warning);
+  background: var(--lv-warning-bg);
+  border-color: var(--lv-warning-border);
+}
+.lv-action-bar #bar-review-status[data-status="reviewed"] {
+  color: var(--lv-success);
+  background: var(--lv-success-bg);
+  border-color: var(--lv-success-border);
+}
+#bar-review-status option {
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+}
+.lv-action-label {
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  white-space: nowrap;
+}
+
+.lv-action-bar button {
+  height: 28px;
+  padding: 0 11px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.lv-action-bar button:hover:not(:disabled) {
+  color: var(--lv-primary-hover);
+  border-color: var(--lv-primary-hover);
+}
+
+.lv-action-bar button:disabled {
+  color: var(--lv-text-disabled);
+  background: var(--lv-bg-hover);
+  cursor: not-allowed;
+}
+
+#propagate-button {
+  color: var(--lv-on-primary);
+  background: var(--lv-primary);
+  border-color: var(--lv-primary);
+}
+
+#propagate-button:hover:not(:disabled) {
+  color: var(--lv-on-primary);
+  background: var(--lv-primary-hover);
+}
+
+.lv-action-bar select,
+.lv-action-bar input[type="number"] {
+  height: 28px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+#propagation-end-frame {
+  width: 84px;
+}
+
+#propagation-status,
+#occlusion-edges-summary {
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+}
+
+/* status bar */
+#status-line {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 5px 12px;
+  min-height: 26px;
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  background: var(--lv-bg-elevated);
+  border-top: 1px solid var(--lv-border);
+}
+
+/* ----------------------------------------------------------- side panel */
+
+.lv-side-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 320px;
+  min-height: 0;
+  background: var(--lv-bg-elevated);
+  border-left: 1px solid var(--lv-border);
+}
+
+.lv-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--lv-border);
+}
+
+.lv-tab {
+  flex: 1;
+  padding: 10px 8px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--lv-text);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.lv-tab:hover {
+  color: var(--lv-primary);
+}
+
+.lv-tab[aria-selected="true"] {
+  color: var(--lv-primary);
+  border-bottom-color: var(--lv-primary);
+}
+
+.lv-tab-panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.lv-tab-panel {
+  padding: 14px;
+}
+
+.lv-tab-panel[hidden] {
+  display: none;
+}
+
+.lv-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lv-text);
+}
+
+/* objects tab */
+#new-object-controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+#new-object-label {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+#add-object-button {
+  height: 30px;
+  padding: 0 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--lv-on-primary);
+  background: var(--lv-primary);
+  border: 1px solid var(--lv-primary);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#add-object-button:hover {
+  background: var(--lv-primary-hover);
+  border-color: var(--lv-primary-hover);
+}
+
+#class-section {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+#class-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--lv-text);
+}
+
+#class-section summary::marker {
+  color: var(--lv-primary);
+}
+
+#class-section summary:hover {
+  color: var(--lv-primary);
+}
+
+#class-count {
+  font-weight: 400;
+  color: var(--lv-text-secondary);
+}
+
+#class-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#class-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--lv-bg-hover);
+  border: 1px solid var(--lv-border-light);
+  border-radius: var(--lv-radius);
+}
+
+#class-list .class-number {
+  min-width: 1.5em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* Looks like plain text until hovered or focused, then like a text box. */
+#class-list .class-name {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--lv-radius);
+}
+
+#class-list .class-name:hover {
+  border-color: var(--lv-border);
+}
+
+#class-list .class-name:focus {
+  background: var(--lv-bg-inset);
+  border-color: var(--lv-primary);
+  outline: none;
+}
+
+#class-list button.class-merge {
+  width: auto;
+  padding: 0 6px;
+}
+
+#class-list .class-merge-select {
+  max-width: 45%;
+  height: 24px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+#class-list button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#class-list button.class-delete:hover:not(:disabled) {
+  color: var(--lv-danger);
+  border-color: var(--lv-danger);
+}
+
+#class-list button:hover:not(:disabled) {
+  color: var(--lv-primary);
+  border-color: var(--lv-primary);
+}
+
+#class-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#object-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Two rows per item: the name (which annotation-canvas.js renders as
+   "label (id) [state]" and can be long) gets a full row of its own, with the
+   colour swatch pinned into the gutter and the action buttons right-aligned
+   underneath -- otherwise a long free-text name and both buttons fight over
+   one 320px row. */
+#object-list li {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 8px 26px;
+  font-size: 13px;
+  background: var(--lv-bg-hover);
+  border: 1px solid var(--lv-border-light);
+  border-left: 3px solid transparent;
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#object-list li > span:not(.object-swatch) {
+  flex: 1 1 100%;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Right-aligned button block: Class | Lock | Delete, with Deactivate | Hide
+   underneath when the object is on this frame. */
+#object-list .object-actions {
+  margin-left: auto;
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 4px;
+}
+
+/* Locked: a padlock before the name, and Lock shown pressed. */
+#object-list li.locked > span:not(.object-swatch)::before {
+  content: "";
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2 0h6V7a3 3 0 0 0-6 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3h1a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2zm2 0h6V7a3 3 0 0 0-6 0z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+#object-list li button.object-lock[aria-pressed="true"] {
+  color: var(--lv-warning);
+  border-color: var(--lv-warning-border);
+  background: var(--lv-warning-bg);
+}
+
+/* "Class" turns the name into this text box, on the name's own row. */
+#object-list .object-class-input {
+  flex: 1 1 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-primary);
+  border-radius: var(--lv-radius);
+}
+
+#toggle-offframe-objects {
+  margin-top: 8px;
+}
+
+#object-list li:hover {
+  border-color: var(--lv-border);
+  border-left-color: var(--lv-primary-hover);
+}
+
+#object-list li.selected {
+  background: var(--lv-primary-fade);
+  border-color: var(--lv-primary);
+  border-left-color: var(--lv-primary);
+}
+
+#object-list li.inactive {
+  opacity: 0.5;
+}
+
+#object-list li button {
+  height: 24px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#object-list li button:hover:not(:disabled) {
+  color: var(--lv-primary);
+  border-color: var(--lv-primary);
+}
+
+#object-list li button.object-delete:hover:not(:disabled) {
+  color: var(--lv-danger);
+  border-color: var(--lv-danger);
+}
+
+#object-list li button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.object-swatch {
+  position: absolute;
+  left: 9px;
+  top: 12px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+/* review tab */
+#review-status {
+  width: 100%;
+  height: 32px;
+  padding: 2px 8px;
+  margin-bottom: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+}
+
+#review-comment {
+  width: 100%;
+  min-height: 96px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  resize: vertical;
+}
+
+#save-review-button {
+  width: 100%;
+  height: 32px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--lv-on-primary);
+  background: var(--lv-primary);
+  border: 1px solid var(--lv-primary);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#save-review-button:hover {
+  background: var(--lv-primary-hover);
+}
+
+/* Bulk action: outlined, so it doesn't read as the tab's main button. */
+#mark-all-reviewed-button {
+  width: 100%;
+  height: 32px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--lv-primary);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-primary);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#mark-all-reviewed-button:hover:not(:disabled) {
+  background: var(--lv-primary-fade);
+}
+
+/* appearance block, pinned to the bottom of the sidebar like a video player's settings */
+.lv-appearance {
+  flex: 0 0 auto;
+  border-top: 1px solid var(--lv-border);
+}
+
+.lv-appearance > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.lv-appearance > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lv-appearance > summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 5px solid var(--lv-text-secondary);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.15s;
+}
+
+.lv-appearance[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.lv-appearance-body {
+  padding: 0 14px 14px;
+}
+
+.lv-slider-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.lv-slider-row label {
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+}
+
+.lv-slider-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--lv-primary);
+}
+
+.lv-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  cursor: pointer;
+}
+
+.lv-toggle-row input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--lv-primary);
+}
+
+.lv-action-group .lv-toggle-row {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+/* tab badge -- outstanding review count */
+.lv-tab-badge {
+  display: inline-block;
+  min-width: 17px;
+  padding: 0 5px;
+  margin-left: 4px;
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--lv-on-primary);
+  background: var(--lv-warning);
+  border-radius: 9px;
+}
+
+.lv-tab-badge[hidden] {
+  display: none;
+}
+
+/* review queue */
+.lv-queue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lv-queue-item {
+  padding: 8px;
+  background: var(--lv-bg-hover);
+  border: 1px solid var(--lv-border-light);
+  border-left: 3px solid var(--lv-warning);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.lv-queue-item:hover {
+  border-color: var(--lv-primary);
+  border-left-color: var(--lv-warning);
+}
+
+.lv-queue-frame {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.lv-queue-solved {
+  height: 22px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-success);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-success-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.lv-queue-solved:hover:not(:disabled) {
+  background: var(--lv-success-bg);
+  border-color: var(--lv-success);
+}
+
+/* A "deleted" frame (left out of exports): dimmed, with a badge by the
+   Delete/Restore button. */
+#canvas-scroll.frame-excluded #canvas-stage {
+  opacity: 0.45;
+}
+
+.lv-frame-excluded-badge {
+  color: var(--lv-danger);
+  background: var(--lv-danger-bg);
+}
+
+/* .lv-chip's display: inline-block would otherwise beat [hidden]. */
+.lv-frame-excluded-badge[hidden] {
+  display: none;
+}
+
+.lv-queue-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.lv-queue-comment {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--lv-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.lv-queue-empty {
+  font-size: 13px;
+  color: var(--lv-text-secondary);
+}
+
+/* split assignments */
+.lv-split-list {
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.lv-split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--lv-bg-hover);
+  border: 1px solid var(--lv-border-light);
+  border-radius: var(--lv-radius);
+}
+
+.lv-split-row span:first-child {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.lv-split-row button {
+  height: 22px;
+  padding: 0 8px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--lv-text-secondary);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+.lv-split-row button:hover {
+  color: var(--lv-danger);
+  border-color: var(--lv-danger);
+}
+
+.lv-split-train {
+  color: var(--lv-success);
+  background: var(--lv-success-bg);
+}
+
+.lv-split-val {
+  color: var(--lv-primary);
+  background: var(--lv-primary-fade);
+}
+
+.lv-split-excluded {
+  color: var(--lv-warning);
+  background: var(--lv-warning-bg);
+}
+
+.lv-split-add {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.2fr auto;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.lv-split-add .lv-input,
+.lv-split-add .lv-select {
+  min-width: 0;
+  height: 28px;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+#add-split-button {
+  height: 28px;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--lv-text);
+  background: var(--lv-bg-inset);
+  border: 1px solid var(--lv-border);
+  border-radius: var(--lv-radius);
+  cursor: pointer;
+}
+
+#add-split-button:hover {
+  color: var(--lv-primary);
+  border-color: var(--lv-primary);
+}
+
+/* auto pre-annotation progress */
+#auto-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#auto-progress-container[hidden] {
+  display: none;
+}
+
+#auto-progress {
+  flex: 1;
+  height: 6px;
+  appearance: none;
+  border: none;
+  border-radius: 3px;
+  background: var(--lv-border-light);
+  overflow: hidden;
+}
+
+#auto-progress::-webkit-progress-value {
+  background: var(--lv-primary);
+}
+
+#auto-progress::-moz-progress-bar {
+  background: var(--lv-primary);
+}
+
+#auto-status,
+#runs-status {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--lv-text-secondary);
+}
+
+#auto-status:empty,
+#runs-status:empty {
+  display: none;
+}
+
+#concept-search-controls {
+  display: grid;
+  gap: 8px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--lv-border);
+}
+
+#concept-results:not([hidden]) {
+  display: grid;
+  gap: 8px;
+}
+
+#concept-search-controls input,
+#concept-search-controls select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .lv-side-panel {
+    flex-basis: 260px;
+  }
+}

@@ -1,0 +1,99 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISTLabel — Help{% if doc %}: {{ doc.title }}{% endif %}</title>
+  {% include "_theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v={{ asset_version }}" />
+</head>
+<body id="help-body">
+  <header class="lv-header">
+    <a class="lv-brand" href="https://blender.it4i.cz/" target="_blank" rel="noopener">
+      <img
+        class="lv-brand-logo"
+        src="{{ url_for('static', path='img/it4i-logo.png') }}"
+        alt="IT4Innovations"
+      />
+    </a>
+    <span class="lv-logo">VISTLabel</span>
+    <nav class="lv-nav">
+      <a href="/">Projects</a>
+      <a href="/help" class="active" aria-current="page">Help</a>
+    </nav>
+    <div class="lv-header-right">
+      <button type="button" class="lv-btn lv-btn-text lv-btn-icon lv-theme-toggle" id="theme-toggle"></button>
+    </div>
+  </header>
+
+  <main class="lv-page lv-help-page">
+    <aside class="lv-help-sidebar" aria-label="Help contents">
+      <h2 class="lv-help-sidebar-title">Documentation</h2>
+      <ul class="lv-help-index" id="help-index">
+        <li class="{% if doc is none %}active{% endif %}">
+          <a href="/help">Overview and shortcuts</a>
+        </li>
+        {% for entry in index %}
+        <li class="{% if doc and doc.name == entry.name %}active{% endif %}">
+          {% if entry.available %}
+          <a href="/help/{{ entry.name }}">{{ entry.title }}</a>
+          {% else %}
+          <span class="lv-help-missing" title="This document is not installed">{{ entry.title }}</span>
+          {% endif %}
+          <span class="lv-help-summary">{{ entry.summary }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if doc and not doc.missing and doc.headings %}
+      <h3 class="lv-help-toc-title">On this page</h3>
+      <ul class="lv-help-toc" id="help-toc">
+        {% for h in doc.headings %}
+        <li class="lv-help-toc-{{ h.level }}"><a href="#{{ h.anchor }}">{{ h.text }}</a></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </aside>
+
+    <article class="lv-help-article" id="help-article">
+      {% if doc is none %}
+        <h1>VISTLabel Help</h1>
+        <p>
+          VISTLabel annotates videos frame by frame: you segment objects
+          with SAM prompts and the brush, propagate them through the video, review
+          the result and export a YOLO or COCO dataset.
+        </p>
+        <p>
+          New here? Start with the <a href="/help/user-guide">user guide</a>, which
+          walks through a project from upload to export. Everything here is served from the
+          local <code>docs/</code> directory, so no network access is needed.
+        </p>
+        <h2 id="shortcuts">Keyboard shortcuts</h2>
+        <p class="lv-hint">
+          Letter and number shortcuts never fire while you type in a text field,
+          and they leave browser shortcuts such as <kbd>Ctrl</kbd>+<kbd>R</kbd> alone.
+        </p>
+        <div class="lv-help-table"><table id="shortcut-table">
+          <thead><tr><th>Keys</th><th>Where</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for s in shortcuts %}
+            <tr><td><code>{{ s["keys"] }}</code></td><td>{{ s.scope }}</td><td>{{ s.description }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table></div>
+      {% elif doc.missing %}
+        <h1>Page not found</h1>
+        <p>There is no help page named <code>{{ doc.name }}</code>. Pick one from the list.</p>
+      {% else %}
+        {{ doc.html | safe }}
+      {% endif %}
+    </article>
+  </main>
+
+  <script type="module">
+    import { setUpThemeToggle } from "{{ url_for('static', path='js/theme.js') }}?v={{ asset_version }}";
+    setUpThemeToggle("theme-toggle");
+  </script>
+</body>
+</html>

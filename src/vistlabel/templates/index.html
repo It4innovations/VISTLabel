@@ -1,0 +1,322 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISTLabel — Projects</title>
+  {% include "_theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v={{ asset_version }}" />
+</head>
+<body>
+  <header class="lv-header">
+    <a class="lv-brand" href="https://blender.it4i.cz/" target="_blank" rel="noopener">
+      <img
+        class="lv-brand-logo"
+        src="{{ url_for('static', path='img/it4i-logo.png') }}"
+        alt="IT4Innovations"
+      />
+    </a>
+    <span class="lv-logo">VISTLabel</span>
+    <nav class="lv-nav">
+      <a href="/" class="active">Projects</a>
+      <a href="/help" id="open-help-link">Help</a>
+    </nav>
+    <div class="lv-header-right">
+      <button type="button" class="lv-btn lv-btn-text" id="open-metrics-button">System status</button>
+      <button type="button" class="lv-btn lv-btn-text lv-btn-icon lv-theme-toggle" id="theme-toggle"></button>
+    </div>
+  </header>
+
+  <main class="lv-page">
+    <div class="lv-toolbar">
+      <div class="lv-search">
+        <input
+          type="search"
+          id="project-search"
+          class="lv-input"
+          placeholder="Search ..."
+          aria-label="Search projects by name"
+        />
+        <button type="button" class="lv-search-button" id="project-search-button" aria-label="Search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+          </svg>
+        </button>
+      </div>
+
+      <span class="lv-count" id="project-count"></span>
+
+      <div class="lv-toolbar-right">
+        <button type="button" class="lv-btn lv-btn-primary" id="create-project-button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          Create project
+        </button>
+      </div>
+    </div>
+
+    <section id="project-list">
+      {% if projects %}
+        {% for project in projects %}
+        {% set total = project.progress.total_frame_count %}
+        {% set annotated = project.progress.annotated_frame_count %}
+        {% set reviewed = project.progress.reviewed_frame_count %}
+        <article class="lv-card" data-project-name="{{ project.name|lower }}">
+          {% if project.source %}
+          <img
+            class="lv-card-thumb"
+            src="/api/v1/projects/{{ project.project_id }}/frames/0/thumbnail"
+            alt=""
+            loading="lazy"
+            onerror="this.removeAttribute('src')"
+          />
+          {% else %}
+          <div class="lv-card-thumb" role="presentation"></div>
+          {% endif %}
+
+          <div class="lv-card-main">
+            <h2 class="lv-card-title">
+              <span class="lv-card-id">#{{ project.project_id[-6:] }}:</span>
+              {{ project.name }}
+            </h2>
+            <p class="lv-card-meta">Created on {{ project.created_at }}</p>
+            {% if project.source %}
+            <p class="lv-card-meta">
+              {{ project.source.width }}&times;{{ project.source.height }}
+              &middot; {{ project.source.nominal_fps|round(2) }} FPS
+              &middot; {{ project.source.frame_count }} frames
+              {% if project.source.original %}
+              <span title="Re-encoded at upload">(from {{ project.source.original.width }}&times;{{ project.source.original.height }}, {{ project.source.original.nominal_fps|round(2) }} FPS)</span>
+              {% endif %}
+            </p>
+            {% endif %}
+          </div>
+
+          <div class="lv-card-stats">
+            <div class="lv-card-stats-line">
+              {{ annotated }} annotated<span class="lv-dot">&bull;</span>{{ reviewed }} reviewed<span class="lv-dot">&bull;</span>{{ total }} total
+            </div>
+            <div
+              class="lv-progress"
+              role="progressbar"
+              aria-valuemin="0"
+              aria-valuemax="{{ total }}"
+              aria-valuenow="{{ annotated }}"
+              title="{{ annotated }} annotated, {{ reviewed }} reviewed of {{ total }} frames"
+            >
+              <div
+                class="lv-progress-bar"
+                style="width: {{ (100 * annotated / total)|round(2) if total else 0 }}%"
+              ></div>
+              <div
+                class="lv-progress-bar reviewed"
+                style="width: {{ (100 * reviewed / total)|round(2) if total else 0 }}%"
+              ></div>
+            </div>
+          </div>
+
+          <div class="lv-card-actions">
+            {% if project.source %}
+            <select
+              class="lv-status-select lv-status-{{ project.status }}"
+              data-project-id="{{ project.project_id }}"
+              data-revision="{{ project.revision }}"
+              aria-label="Project status"
+            >
+              <option value="new" {% if project.status == "new" %}selected{% endif %}>New</option>
+              <option value="in_progress" {% if project.status == "in_progress" %}selected{% endif %}>In progress</option>
+              <option value="done" {% if project.status == "done" %}selected{% endif %}>Done</option>
+              <option value="archived" {% if project.status == "archived" %}selected{% endif %}>Archived</option>
+            </select>
+            <div class="lv-card-buttons">
+              <button
+                type="button"
+                class="lv-btn lv-btn-danger lv-delete-button"
+                data-project-id="{{ project.project_id }}"
+                data-project-title="{{ project.name }}"
+              >Delete</button>
+              <button
+                type="button"
+                class="lv-btn lv-export-button"
+                data-project-id="{{ project.project_id }}"
+                data-project-title="{{ project.name }}"
+              >Export</button>
+              <a class="lv-btn lv-open-button" href="/projects/{{ project.project_id }}">Open</a>
+            </div>
+            {% else %}
+            <span class="lv-status lv-status-{{ project.status }}">uploading</span>
+            <div class="lv-card-buttons">
+              <button
+                type="button"
+                class="lv-btn lv-btn-danger lv-delete-button"
+                data-project-id="{{ project.project_id }}"
+                data-project-title="{{ project.name }}"
+              >Delete</button>
+              <a class="lv-btn" href="/api/v1/projects/{{ project.project_id }}">Details</a>
+            </div>
+            {% endif %}
+          </div>
+        </article>
+        {% endfor %}
+      {% else %}
+      <div class="lv-empty">
+        <h2>No projects yet</h2>
+        <p>Create a project and upload an MP4 to start annotating.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    <p class="lv-empty" id="no-search-results" hidden>No project matches your search.</p>
+  </main>
+
+  <div class="lv-modal-backdrop" id="create-project-modal" hidden>
+    <div class="lv-modal" role="dialog" aria-modal="true" aria-labelledby="create-project-heading">
+      <div class="lv-modal-header">
+        <h2 id="create-project-heading">Create project</h2>
+        <button type="button" class="lv-modal-close" id="close-modal-button" aria-label="Close">&times;</button>
+      </div>
+      <form id="create-project-form">
+        <div class="lv-modal-body">
+          <div class="lv-field">
+            <label class="lv-label" for="project_name">Project name</label>
+            <input
+              type="text"
+              id="project_name"
+              name="project_name"
+              class="lv-input"
+              style="width: 100%"
+              required
+              maxlength="200"
+            />
+          </div>
+
+          <div class="lv-field">
+            <label class="lv-label" for="create-source">Source</label>
+            <select id="create-source" class="lv-select" style="width: 100%">
+              <option value="video" selected>MP4 video</option>
+              <option value="dataset">COCO or YOLO dataset (.zip)</option>
+            </select>
+          </div>
+
+          <div id="video-source-fields">
+          <div class="lv-field lv-file">
+            <label class="lv-label" for="video_file">MP4 video</label>
+            <input type="file" id="video_file" name="video_file" accept=".mp4" required />
+            <p class="lv-hint" id="video-file-info" hidden></p>
+          </div>
+
+          <div class="lv-field">
+            <label class="lv-label" for="import-resolution">Resolution</label>
+            <select id="import-resolution" class="lv-select" style="width: 100%">
+              <option value="native" selected>Native</option>
+              <option value="1920x1080">1920&times;1080</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+
+          <div class="lv-field lv-field-row" id="import-custom-size-field" hidden>
+            <div>
+              <label class="lv-label" for="import-max-width">Width</label>
+              <input type="number" id="import-max-width" class="lv-input" min="16" max="16384" step="1" style="width: 100%" />
+            </div>
+            <div>
+              <label class="lv-label" for="import-max-height">Height</label>
+              <input type="number" id="import-max-height" class="lv-input" min="16" max="16384" step="1" style="width: 100%" />
+            </div>
+          </div>
+          <p class="lv-hint" id="import-resolution-hint">
+            The video is scaled to fit inside this size, keeping its aspect ratio. It is never upscaled.
+          </p>
+
+          <div class="lv-field">
+            <label class="lv-label" for="import-frame-mode">Frames</label>
+            <select id="import-frame-mode" class="lv-select" style="width: 100%">
+              <option value="all" selected>Keep every frame</option>
+              <option value="nth">Keep every nth frame</option>
+              <option value="fps">Target frame rate</option>
+            </select>
+          </div>
+
+          <div class="lv-field" id="import-keep-every-nth-field" hidden>
+            <label class="lv-label" for="import-keep-every-nth">n (keep frames 0, n, 2n, ...)</label>
+            <input type="number" id="import-keep-every-nth" class="lv-input" min="2" max="1000" step="1" value="2" style="width: 100%" />
+            <p class="lv-hint">2 keeps half the frames, 3 keeps a third, and so on.</p>
+          </div>
+
+          <div class="lv-field" id="import-target-fps-field" hidden>
+            <label class="lv-label" for="import-target-fps">Frames per second</label>
+            <input type="number" id="import-target-fps" class="lv-input" min="0.1" max="240" step="any" value="10" style="width: 100%" />
+            <p class="lv-hint">Must not exceed the video's own frame rate.</p>
+          </div>
+          </div>
+
+          <div id="dataset-source-fields" hidden>
+            <div class="lv-field lv-file">
+              <label class="lv-label" for="dataset_file">Dataset ZIP</label>
+              <input type="file" id="dataset_file" name="dataset_file" accept=".zip" disabled />
+              <p class="lv-hint">
+                Images with COCO JSON or YOLO labels, as exported by VISTLabel, Roboflow,
+                Ultralytics or CVAT. Masks and polygons become masks; boxes become rectangle
+                masks you can refine with SAM.
+              </p>
+            </div>
+
+            <div class="lv-field">
+              <label class="lv-label" for="dataset_format">Format</label>
+              <select id="dataset_format" name="dataset_format" class="lv-select" style="width: 100%" disabled>
+                <option value="auto" selected>Detect (COCO if both)</option>
+                <option value="coco">COCO</option>
+                <option value="yolo">YOLO</option>
+              </select>
+            </div>
+
+            <div class="lv-field">
+              <label class="lv-label" for="dataset_frame_rate">Playback frames per second</label>
+              <input type="number" id="dataset_frame_rate" name="frame_rate" class="lv-input" min="0.1" max="240" step="any" value="10" style="width: 100%" disabled />
+              <p class="lv-hint">Images become frames in filename order, one image per frame.</p>
+            </div>
+
+            <div class="lv-field">
+              <label class="lv-label" for="dataset-frame-mode">Frames</label>
+              <select id="dataset-frame-mode" class="lv-select" style="width: 100%" disabled>
+                <option value="all" selected>Keep every image</option>
+                <option value="nth">Keep every nth image</option>
+              </select>
+            </div>
+
+            <div class="lv-field" id="dataset-keep-every-nth-field" hidden>
+              <label class="lv-label" for="dataset-keep-every-nth">n (keep images 0, n, 2n, ...)</label>
+              <input type="number" id="dataset-keep-every-nth" name="keep_every_nth" class="lv-input" min="2" max="1000" step="1" value="2" style="width: 100%" disabled />
+              <p class="lv-hint">
+                Counted in filename order. 2 keeps half the images, 3 keeps a third, and so on;
+                the other images and their annotations are left out.
+              </p>
+            </div>
+          </div>
+
+          <div id="upload-progress-container" hidden>
+            <progress id="upload-progress" value="0" max="100"></progress>
+            <span id="upload-progress-label">0%</span>
+            <button type="button" class="lv-btn" id="cancel-upload-button">Cancel</button>
+          </div>
+
+          <p id="upload-error" role="alert"></p>
+        </div>
+
+        <div class="lv-modal-footer">
+          <button type="button" class="lv-btn" id="cancel-modal-button">Cancel</button>
+          <button type="submit" class="lv-btn lv-btn-primary" id="submit-button">Create Project</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% include "_export_dialog.html" %}
+  {% include "_metrics_dialog.html" %}
+
+  <script type="module" src="{{ url_for('static', path='js/upload.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

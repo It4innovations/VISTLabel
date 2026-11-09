@@ -1,0 +1,28 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Propagation run history. Runs survive restarts
+   via their manifests, so this lists every run of the project, not just the
+   one started in this browser session, and offers pause/resume/cancel. #}
+<div class="lv-modal-backdrop" id="tracking-runs-modal" hidden>
+  <div class="lv-modal lv-modal-wide" role="dialog" aria-modal="true" aria-labelledby="tracking-runs-heading">
+    <div class="lv-modal-header">
+      <h2 id="tracking-runs-heading">Propagation runs</h2>
+      <button type="button" class="lv-modal-close" id="runs-close-button" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="lv-modal-body">
+      <p class="lv-hint">
+        A run interrupted by a restart is never auto-resumed &mdash; it is
+        listed as <em>interrupted</em> and continues from its last committed
+        frame only when you resume it.
+      </p>
+      <p id="runs-status" role="status"></p>
+      <ul id="tracking-runs-list" class="lv-export-history"></ul>
+    </div>
+
+    <div class="lv-modal-footer">
+      <button type="button" class="lv-btn" id="runs-refresh-button">Refresh</button>
+      <button type="button" class="lv-btn" id="runs-dismiss-button">Close</button>
+    </div>
+  </div>
+</div>

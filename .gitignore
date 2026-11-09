@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+.venv.ubuntu/
+.venv.win/
+venv/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Machine-specific configuration (see config/app.example.yaml)
+config/app.yaml
+config/yolo_class_mapping.json
+
+# Model checkpoints -- never commit large, license-encumbered binaries
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.safetensors
+# Downloaded HF-format snapshot directories (scripts/download_models.py)
+models/*/
+
+# Runtime project data -- never committed
+workspace/
+
+# Playwright
+test-results/
+playwright-report/
+node_modules/
+
+# Editors / OS
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
