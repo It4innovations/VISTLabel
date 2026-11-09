@@ -8,20 +8,42 @@ result as a YOLO or COCO dataset.
 This guide is for the people who annotate. Installing, configuring and
 starting the service is covered by the `README.md` in the repository.
 
+## Sign in
+
+Open the VISTLabel address (by default `http://127.0.0.1:9080`) and sign in
+with the application's single account. Your administrator creates it on
+the server and gives you the user name and password; there is no
+registration in the browser. If the page says **Account setup required**,
+the account doesn't exist yet: ask your administrator to create it.
+
+After a sign-in you land on the page you opened. A session ends after two
+hours without activity (your administrator can change that), and the next
+action takes you back to the sign-in page; after you sign in again it
+returns you to where you were. Everything saved before stays; the one
+action that ran into the ended session isn't carried out, so repeat it
+after signing in. An upload that was running when the session ended has to
+be started again. After several wrong passwords in a row, sign-in is blocked for a few
+minutes.
+
+Your user name and **Sign out** are in the header of the Projects page and
+the Help page, and **Sign out** is at the right end of the annotation
+workspace's header. Sign out on a shared computer.
+
 ## Workflow at a glance
 
-1. [Create a project](#create-a-project) from an MP4 video, or from an
+1. [Sign in](#sign-in).
+2. [Create a project](#create-a-project) from an MP4 video, or from an
    existing COCO or YOLO dataset.
-2. Open it and [create an object](#create-an-object) for each thing you
+3. Open it and [create an object](#create-an-object) for each thing you
    want segmented. The name you type is its class.
-3. [Segment it with point prompts](#point-prompts) and accept the
+4. [Segment it with point prompts](#point-prompts) and accept the
    candidate mask, then fix the edges with the
    [brush and eraser](#brush-and-eraser).
-4. [Propagate](#propagation) the masks forwards or backwards through the
+5. [Propagate](#propagation) the masks forwards or backwards through the
    video.
-5. [Review](#review) the frames, starting with the ones in the review
+6. [Review](#review) the frames, starting with the ones in the review
    queue.
-6. Optionally assign [train / val splits](#splits), then
+7. Optionally assign [train / val splits](#splits), then
    [export](#export) the dataset.
 
 ## Projects

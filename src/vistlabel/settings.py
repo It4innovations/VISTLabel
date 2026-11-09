@@ -112,24 +112,24 @@ class LoggingSettings(BaseModel):
     json_output: bool = True
 
 
-class AuthSettings(BaseModel):
-    """Authentication must be added before exposing the service beyond a
-    controlled network. Disabled by default -- binding to localhost (the
-    other default) is the real protection for a single-workstation
-    install; this is the integration point for the case where VISTLabel is
-    reachable from more than just its own host (a shared workstation,
-    a small internal network) without a full reverse-proxy/SSO deployment
-    in front of it yet. A production deployment beyond a trusted network
-    should still prefer a real reverse-proxy-terminated auth scheme.
+class SecuritySettings(BaseModel):
+    """Browser sign-in for the single application account.
+
+    Every page and API call except the public ones (``/login``, ``/setup``,
+    ``/api/v1/health``, ``/api/v1/version``, static assets) needs a valid
+    session. The account is created on the server with
+    ``vistlabel auth set-password``; there is no web registration. Binding
+    to localhost stays the first line of defence: the server speaks plain
+    HTTP, so reach it through an SSH tunnel or a TLS reverse proxy.
     """
 
-    enabled: bool = False
-    #: Shared API keys checked against the `Authorization: Bearer <key>`
-    #: header. Not a user/session system -- a single shared secret (or a
-    #: few, for simple key rotation) is the appropriate amount of
-    #: complexity for "add an integration point," not a full identity
-    #: provider integration.
-    api_keys: list[str] = Field(default_factory=list)
+    #: Sliding inactivity timeout of a browser session.
+    session_timeout_minutes: int = 120
+    #: Set ``Secure`` on the session cookie. Enable behind HTTPS.
+    secure_cookies: bool = False
+    #: Maximum failed login attempts per client within ``login_rate_window_seconds``.
+    login_rate_limit: int = 10
+    login_rate_window_seconds: int = 300
 
 
 class AppSettings(BaseSettings):
@@ -154,7 +154,7 @@ class AppSettings(BaseSettings):
     tracking: TrackingSettings = Field(default_factory=TrackingSettings)
     export: ExportSettings = Field(default_factory=ExportSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
-    auth: AuthSettings = Field(default_factory=AuthSettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     @classmethod
     def settings_customise_sources(
@@ -207,6 +207,15 @@ _RENAMED_MODEL_KEYS = {"sam31": "sam3"}
 
 
 def _reject_renamed_keys(path: Path, raw: dict[str, Any]) -> None:
+    if "auth" in raw:
+        # The shared ``Authorization: Bearer`` key check was replaced by the
+        # browser sign-in; left in place, the old section would fail with an
+        # opaque "extra inputs are not permitted".
+        raise ValueError(
+            f"{path}: the auth section (shared API keys) was replaced by the browser "
+            "sign-in. Remove it, create the account with `vistlabel auth set-password` "
+            "and tune the session under security.* instead."
+        )
     models = raw.get("models")
     if not isinstance(models, dict):
         return

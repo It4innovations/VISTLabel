@@ -11,7 +11,7 @@ import time
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_project_with_video
+from tests.conftest import authenticated_client, create_project_with_video
 from vistlabel.domain.tracking import TrackingRunStatus
 from vistlabel.main import create_app
 from vistlabel.settings import AppSettings
@@ -401,7 +401,7 @@ def test_resume_continues_from_last_completed_frame(
     # A brand new app/client -- the "crash": no live backend session, no
     # in-memory job/cancel state survives.
     second_app = create_app(settings)
-    second_client = TestClient(second_app)
+    second_client = authenticated_client(second_app)
 
     resume_response = second_client.post(
         f"/api/v1/projects/{project_id}/tracking-runs/{run_id}/resume"
@@ -473,7 +473,7 @@ def test_startup_recovery_marks_orphaned_running_manifest_interrupted(
 ) -> None:
     settings = AppSettings(workspace={"root": tmp_path / "workspace"})
     first_app = create_app(settings)
-    first_client = TestClient(first_app)
+    first_client = authenticated_client(first_app)
     project_id = create_project_with_video(first_client, "crash recovery test")["project_id"]
     object_id = _create_object(first_client, project_id)
     _seed_object(first_client, project_id, object_id)
@@ -497,7 +497,7 @@ def test_startup_recovery_marks_orphaned_running_manifest_interrupted(
 
     # A brand new app instance, as if the process restarted.
     second_app = create_app(settings)
-    second_client = TestClient(second_app)
+    second_client = authenticated_client(second_app)
     run_record = second_client.get(
         f"/api/v1/projects/{project_id}/tracking-runs/{run_id}"
     ).json()

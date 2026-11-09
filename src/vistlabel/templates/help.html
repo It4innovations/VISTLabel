@@ -24,6 +24,8 @@
       <a href="/help" class="active" aria-current="page">Help</a>
     </nav>
     <div class="lv-header-right">
+      {% if request.state.session %}<span class="lv-user" id="current-user">{{ request.state.session.username }}</span>
+      <button type="button" class="lv-btn lv-btn-text" id="logout-button">Sign out</button>{% endif %}
       <button type="button" class="lv-btn lv-btn-text lv-btn-icon lv-theme-toggle" id="theme-toggle"></button>
     </div>
   </header>
@@ -93,7 +95,9 @@
 
   <script type="module">
     import { setUpThemeToggle } from "{{ url_for('static', path='js/theme.js') }}?v={{ asset_version }}";
+    import { setUpLogout } from "{{ url_for('static', path='js/session.js') }}?v={{ asset_version }}";
     setUpThemeToggle("theme-toggle");
+    setUpLogout();
   </script>
 </body>
 </html>

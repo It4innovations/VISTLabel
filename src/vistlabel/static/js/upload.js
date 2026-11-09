@@ -8,12 +8,17 @@
 // Relative module imports do not inherit the entry point's query string.
 // Keep dependencies on the same asset version as the HTML, JS and CSS.
 const assetQuery = new URL(import.meta.url).search;
-const [{ openExportDialog }, { setUpThemeToggle }] = await Promise.all([
+const [
+  { openExportDialog }, { setUpThemeToggle },
+  { apiFetch, setUpLogout, redirectToLogin, CSRF_HEADER, CSRF_HEADER_VALUE },
+] = await Promise.all([
   import(`./exports.js${assetQuery}`),
   import(`./theme.js${assetQuery}`),
+  import(`./session.js${assetQuery}`),
 ]);
 
 setUpThemeToggle("theme-toggle");
+setUpLogout();
 
 const form = document.getElementById("create-project-form");
 const progressContainer = document.getElementById("upload-progress-container");
@@ -136,7 +141,7 @@ for (const select of document.querySelectorAll(".lv-status-select")) {
   select.addEventListener("change", async () => {
     const previous = select.dataset.previousValue || select.value;
     select.disabled = true;
-    const response = await fetch(`/api/v1/projects/${select.dataset.projectId}`, {
+    const response = await apiFetch(`/api/v1/projects/${select.dataset.projectId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -181,7 +186,7 @@ for (const button of document.querySelectorAll(".lv-delete-button")) {
       return;
     }
     button.disabled = true;
-    const response = await fetch(`/api/v1/projects/${button.dataset.projectId}`, {
+    const response = await apiFetch(`/api/v1/projects/${button.dataset.projectId}`, {
       method: "DELETE",
     });
     if (response.ok) {
@@ -228,9 +233,9 @@ async function loadMetrics() {
 
 async function renderMetrics() {
   const [health, models, metrics] = await Promise.all([
-    fetch("/api/v1/health").then((r) => r.json()),
-    fetch("/api/v1/models").then((r) => r.json()),
-    fetch("/api/v1/metrics").then((r) => r.json()),
+    apiFetch("/api/v1/health").then((r) => r.json()),
+    apiFetch("/api/v1/models").then((r) => r.json()),
+    apiFetch("/api/v1/metrics").then((r) => r.json()),
   ]);
 
   renderKeyValues(document.getElementById("health-list"), [
@@ -460,6 +465,12 @@ form.addEventListener("submit", (event) => {
   });
 
   xhr.addEventListener("load", () => {
+    if (xhr.status === 401) {
+      // The session expired while the file was uploading.
+      uploadInProgress = false;
+      redirectToLogin();
+      return;
+    }
     if (xhr.status >= 200 && xhr.status < 300) {
       resetUploadUi();
       if (dataset) {
@@ -494,6 +505,7 @@ form.addEventListener("submit", (event) => {
   };
 
   xhr.open("POST", dataset ? "/api/v1/projects/import-dataset" : "/api/v1/projects");
+  xhr.setRequestHeader(CSRF_HEADER, CSRF_HEADER_VALUE);
   const formData = new FormData(form);
   if (!dataset) {
     for (const [name, value] of importOptionEntries()) {

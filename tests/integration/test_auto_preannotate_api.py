@@ -15,7 +15,7 @@ import time
 
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_project_with_video
+from tests.conftest import authenticated_client, create_project_with_video
 from vistlabel.main import create_app
 from vistlabel.segmentation.fake import FakeBackend
 from vistlabel.segmentation.registry import BackendRegistry
@@ -63,7 +63,7 @@ def _client_with_working_yolo_sam(
     yolo_backend._class_mapping = YoloClassMapping(schema_version=1, model_classes=names)
 
     app.state.registry = BackendRegistry({"fake": fake_refiner, "yolo_sam": yolo_backend})
-    return TestClient(app)
+    return authenticated_client(app)
 
 
 def _wait_for_job(api_client: TestClient, project_id: str, job_id: str, timeout: float = 20.0):

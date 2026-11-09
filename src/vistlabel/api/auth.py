@@ -1,55 +1,106 @@
 # Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
 # SPDX-License-Identifier: MIT
 
-"""Authentication integration point. Disabled by default -- see
-:class:`~vistlabel.settings.AuthSettings`.
+"""Sign-in, sign-out and session-status endpoints.
 
-A single shared-secret `Authorization: Bearer <key>` check, not a
-user/session system: binding to localhost (the default) is the real
-protection for a single-workstation install. This exists for the
-"reachable from more than just its own host, no reverse-proxy/SSO in
-front of it yet" case -- production deployment beyond a trusted network
-should still prefer a real reverse-proxy-terminated auth scheme.
+The account itself is created on the server (``vistlabel auth
+set-password``); see :mod:`vistlabel.auth`. Requests are checked by
+:class:`~vistlabel.auth.middleware.AuthMiddleware`.
 """
 
 from __future__ import annotations
 
-import hmac
+import logging
 
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from starlette.types import ASGIApp
+from fastapi import APIRouter, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 
-from vistlabel.settings import AuthSettings
+from vistlabel.auth.sessions import SESSION_COOKIE_NAME
 
-#: Always reachable without a key -- an uptime/monitoring probe must not
-#: itself need a credential, and this endpoint returns no project data.
-_EXEMPT_PATHS = frozenset({"/api/v1/health"})
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 
-def _key_is_valid(candidate: str, configured_keys: list[str]) -> bool:
-    # Constant-time comparison against every configured key -- a
-    # request's failure latency must not leak which prefix matched.
-    return any(hmac.compare_digest(candidate, key) for key in configured_keys)
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=64)
+    password: str = Field(min_length=1, max_length=1024)
 
 
-class ApiKeyAuthMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app: ASGIApp, settings: AuthSettings) -> None:
-        super().__init__(app)
-        self._settings = settings
+class AuthStatus(BaseModel):
+    authenticated: bool
+    username: str | None = None
+    account_configured: bool
+    session_expires_at: str | None = None
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        if not self._settings.enabled or request.url.path in _EXEMPT_PATHS:
-            return await call_next(request)
 
-        header = request.headers.get("authorization", "")
-        scheme, _, candidate = header.partition(" ")
-        if scheme.lower() != "bearer" or not candidate:
-            return JSONResponse(
-                {"detail": "missing or malformed Authorization: Bearer <api-key> header"},
-                status_code=401,
-            )
-        if not _key_is_valid(candidate, self._settings.api_keys):
-            return JSONResponse({"detail": "invalid API key"}, status_code=401)
-        return await call_next(request)
+def _client_key(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _set_cookie(request: Request, response: Response, token: str) -> None:
+    security = request.app.state.settings.security
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        token,
+        max_age=security.session_timeout_minutes * 60,
+        httponly=True,
+        samesite="lax",
+        secure=security.secure_cookies,
+        path="/",
+    )
+
+
+@router.post("/login")
+def login(payload: LoginRequest, request: Request, response: Response) -> AuthStatus:
+    accounts = request.app.state.accounts
+    sessions = request.app.state.sessions
+    limiter = request.app.state.login_limiter
+    key = _client_key(request)
+
+    if not accounts.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="no account exists yet: run `vistlabel auth set-password` on the server",
+        )
+    if limiter.is_blocked(key):
+        retry = limiter.retry_after_seconds(key)
+        raise HTTPException(
+            status_code=429,
+            detail=f"too many failed sign-in attempts: wait {retry} s and try again",
+            headers={"Retry-After": str(retry)},
+        )
+    if not accounts.verify(payload.username, payload.password):
+        limiter.record_failure(key)
+        # The password is never logged, not even on failure.
+        logger.warning("login failed", extra={"client": key, "username": payload.username})
+        raise HTTPException(status_code=401, detail="invalid username or password")
+    limiter.reset(key)
+    token, session = sessions.create(payload.username.strip())
+    _set_cookie(request, response, token)
+    logger.info("login succeeded", extra={"client": key, "username": session.username})
+    return AuthStatus(
+        authenticated=True,
+        username=session.username,
+        account_configured=True,
+        session_expires_at=session.expires_at,
+    )
+
+
+@router.post("/logout")
+def logout(request: Request, response: Response) -> AuthStatus:
+    request.app.state.sessions.revoke(request.cookies.get(SESSION_COOKIE_NAME))
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return AuthStatus(
+        authenticated=False, account_configured=request.app.state.accounts.is_configured()
+    )
+
+
+@router.get("/status")
+def status(request: Request) -> AuthStatus:
+    session = getattr(request.state, "session", None)
+    return AuthStatus(
+        authenticated=session is not None,
+        username=session.username if session else None,
+        account_configured=request.app.state.accounts.is_configured(),
+        session_expires_at=session.expires_at if session else None,
+    )

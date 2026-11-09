@@ -8,14 +8,68 @@ from pathlib import Path
 
 import httpx
 import pytest
+from argon2 import PasswordHasher
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from vistlabel.auth.account import Account, AccountStore, utc_now_iso
 from vistlabel.main import create_app
+from vistlabel.persistence.atomic import save_model
 from vistlabel.settings import AppSettings
 from vistlabel.video.ffmpeg import FfmpegBinaries, try_find_ffmpeg_binaries
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TINY_TEST_VIDEO = FIXTURES_DIR / "tiny_test_video.mp4"
+
+TEST_USERNAME = "tester"
+TEST_PASSWORD = "correct-horse-battery"
+
+#: Every state-changing API call must carry the same-origin marker header.
+CSRF_HEADERS = {"X-Requested-With": "VISTLabel"}
+
+#: The production Argon2id parameters cost ~0.1 s per hash and per verify.
+#: Verification reads the parameters from the hash itself, so an account
+#: written with a cheap hash signs in instantly -- hundreds of tests each
+#: create an account and sign in. tests/unit/test_auth.py covers the real
+#: parameters.
+_CHEAP_TEST_HASH = PasswordHasher(time_cost=1, memory_cost=8, parallelism=1).hash(TEST_PASSWORD)
+
+
+def write_test_account(workspace_root: Path) -> AccountStore:
+    store = AccountStore(workspace_root)
+    now = utc_now_iso()
+    save_model(
+        store.path,
+        Account(
+            username=TEST_USERNAME,
+            password_hash=_CHEAP_TEST_HASH,
+            created_at=now,
+            updated_at=now,
+        ),
+        fsync=False,
+    )
+    return store
+
+
+def login(client: TestClient | httpx.Client) -> None:
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"username": TEST_USERNAME, "password": TEST_PASSWORD},
+        headers=CSRF_HEADERS,
+    )
+    assert response.status_code == 200, response.text
+
+
+def authenticated_client(app: FastAPI) -> TestClient:
+    """A TestClient signed in to ``app`` (creating the test account in its
+    workspace if needed), with the CSRF header pre-set."""
+    accounts: AccountStore = app.state.accounts
+    if not accounts.is_configured():
+        write_test_account(app.state.settings.workspace.root)
+    client = TestClient(app)
+    client.headers.update(CSRF_HEADERS)
+    login(client)
+    return client
 
 
 @pytest.fixture(autouse=True)
@@ -50,9 +104,23 @@ def app_settings(tmp_path: Path) -> AppSettings:
 
 
 @pytest.fixture
-def api_client(app_settings: AppSettings) -> TestClient:
-    app = create_app(app_settings)
-    return TestClient(app)
+def configured_account(app_settings: AppSettings) -> AccountStore:
+    return write_test_account(app_settings.workspace.root)
+
+
+@pytest.fixture
+def anonymous_client(app_settings: AppSettings, configured_account: AccountStore) -> TestClient:
+    """Client against an app with an account but no session."""
+    client = TestClient(create_app(app_settings))
+    client.headers.update(CSRF_HEADERS)
+    return client
+
+
+@pytest.fixture
+def api_client(anonymous_client: TestClient) -> TestClient:
+    """Signed-in client with the CSRF header pre-set."""
+    login(anonymous_client)
+    return anonymous_client
 
 
 def create_project_with_video(

@@ -24,6 +24,7 @@ dependencies = [
     "pillow>=10.4",
     "python-multipart>=0.0.12",
     "jinja2>=3.1",
+    "argon2-cffi>=23.1",
 ]
 
 [project.optional-dependencies]
@@ -88,5 +89,6 @@ testpaths = ["tests"]
 markers = [
     "gpu: requires a real CUDA GPU and configured model checkpoints",
     "browser: requires Playwright browsers to be installed (playwright install)",
+    "signed_out: browser test that starts without a session (sign-in flow tests)",
 ]
 addopts = "-ra"

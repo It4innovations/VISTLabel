@@ -1,0 +1,37 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISTLabel — Setup required</title>
+  {% include "_theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v={{ asset_version }}" />
+</head>
+<body>
+  {% include "_auth_header.html" %}
+
+  <main class="lv-page lv-page-narrow">
+    <section class="lv-auth-card">
+      <h1 class="lv-auth-title">Account setup required</h1>
+      <p class="lv-hint">
+        VISTLabel has exactly one user account and it has not been created yet. The account is
+        created on the server, never through the browser. Run, inside the application's virtual
+        environment:
+      </p>
+      <pre class="lv-auth-code">vistlabel auth set-password --username &lt;name&gt;</pre>
+      <p class="lv-hint">
+        The command prompts for the password (or reads <code>VISTLABEL_PASSWORD</code> from the
+        environment) and stores only an Argon2id hash under the workspace. Then continue to sign in.
+      </p>
+      <a class="lv-btn lv-btn-primary" href="/login">Continue to sign in</a>
+    </section>
+  </main>
+
+  <script type="module">
+    import { setUpThemeToggle } from "{{ url_for('static', path='js/theme.js') }}?v={{ asset_version }}";
+    setUpThemeToggle("theme-toggle");
+  </script>
+</body>
+</html>

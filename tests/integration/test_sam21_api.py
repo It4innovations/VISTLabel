@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.conftest import create_project_with_video
+from tests.conftest import authenticated_client, create_project_with_video
 from vistlabel.video.ffmpeg import FfmpegBinaries
 
 pytestmark = pytest.mark.gpu
@@ -42,7 +42,7 @@ def sam21_api_client(tmp_path: Path) -> TestClient:
         workspace={"root": tmp_path / "workspace"},
         models={"sam21": {"enabled": True, "checkpoint": str(CHECKPOINT_DIR)}},
     )
-    return TestClient(create_app(settings))
+    return authenticated_client(create_app(settings))
 
 
 def test_models_endpoint_reports_sam21_available(

@@ -5,9 +5,12 @@ accelerate
 annotated-doc
 annotated-types
 anyio
+argon2-cffi
+argon2-cffi-bindings
 ast_serialize
 av
 certifi
+cffi
 charset-normalizer
 click
 colorama
@@ -47,6 +50,7 @@ polars
 polars-runtime-32
 psutil
 pycocotools
+pycparser
 pydantic
 pydantic-settings
 pydantic_core

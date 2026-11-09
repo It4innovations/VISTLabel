@@ -11,14 +11,17 @@ const assetQuery = new URL(import.meta.url).search;
 const [
   { openExportDialog }, { setUpConceptSearch },
   { setUpThemeToggle }, { setUp: setUpWorkspacePanels },
+  { apiFetch, setUpLogout },
 ] = await Promise.all([
   import(`./exports.js${assetQuery}`),
   import(`./concept-search.js${assetQuery}`),
   import(`./theme.js${assetQuery}`),
   import(`./workspace-panels.js${assetQuery}`),
+  import(`./session.js${assetQuery}`),
 ]);
 
 setUpThemeToggle("theme-toggle");
+setUpLogout();
 
 const body = document.getElementById("annotation-body");
 const projectId = body.dataset.projectId;
@@ -227,13 +230,13 @@ function setStatus(text) {
 // ---------------------------------------------------------------- API ----
 
 async function apiGet(path) {
-  const response = await fetch(path);
+  const response = await apiFetch(path);
   if (!response.ok) throw new Error(`GET ${path} failed: ${response.status}`);
   return response.json();
 }
 
 async function apiJson(method, path, body) {
-  const response = await fetch(path, {
+  const response = await apiFetch(path, {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

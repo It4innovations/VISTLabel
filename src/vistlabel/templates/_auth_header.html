@@ -1,0 +1,17 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# Header of the pages shown before sign-in: brand and theme only, no
+   navigation that would lead to a page needing a session. #}
+<header class="lv-header">
+  <a class="lv-brand" href="https://blender.it4i.cz/" target="_blank" rel="noopener">
+    <img
+      class="lv-brand-logo"
+      src="{{ url_for('static', path='img/it4i-logo.png') }}"
+      alt="IT4Innovations"
+    />
+  </a>
+  <span class="lv-logo">VISTLabel</span>
+  <div class="lv-header-right">
+    <button type="button" class="lv-btn lv-btn-text lv-btn-icon lv-theme-toggle" id="theme-toggle"></button>
+  </div>
+</header>

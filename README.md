@@ -18,6 +18,9 @@ the model produced and export the result for training.
   export to Ultralytics YOLO or COCO (RF-DETR layout), as masks or boxes.
 - Filesystem projects, atomic writes, schema migrations; everything stays on
   the machine.
+- Single-account sign-in (Argon2id password, server-side sessions,
+  same-origin request checks); the account is managed on the server with
+  `vistlabel auth`.
 
 **How to use the application** is described in
 [`docs/user-guide.md`](docs/user-guide.md); the same page is served inside
@@ -52,8 +55,13 @@ python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
-If PowerShell refuses to run the activation script, start it once with
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+Use `py -3.13` where 3.12 isn't installed (`py -0` lists the
+interpreters). If PowerShell refuses to run the activation script, start it
+once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
+FFmpeg: `winget install Gyan.FFmpeg`, or unpack a build from
+<https://www.gyan.dev/ffmpeg/builds/> anywhere and set `runtime.ffmpeg_dir`
+to its `bin` directory.
 
 ## Install on Linux
 
@@ -63,7 +71,6 @@ cd vistlabel
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements-lock.txt   # exact tested versions (optional)
 pip install -e ".[dev]"
 ```
 
@@ -72,11 +79,49 @@ Install FFmpeg from the distribution (`apt install ffmpeg`,
 nodes, install and download models on a login node; the application itself
 never downloads anything at runtime.
 
+`requirements-lock.txt` pins the exact versions tested together on the
+Windows development workstation, including `torch==…+cu130`. It installs
+only where that CUDA 13 build exists (Windows or Linux x86-64, with
+`--extra-index-url https://download.pytorch.org/whl/cu130`); elsewhere,
+macOS included, `pip install -r requirements-lock.txt` stops at the torch
+pin and installs nothing, so use the plain `pip install -e` above.
+
+## Install on macOS
+
+The application runs on macOS (verified on Apple silicon, macOS 26, Python
+3.12) with the `fake` backend; the real model backends need an NVIDIA GPU
+with CUDA, so they stay unavailable there.
+
+```bash
+brew install python@3.12 ffmpeg
+git clone <repository-url> vistlabel
+cd vistlabel
+python3.12 -m venv .venv            # /opt/homebrew/bin/python3.12 if not on PATH
+source .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+The system `/usr/bin/python3` (3.9) is too old. In a non-interactive SSH
+session Homebrew's `/opt/homebrew/bin` is often not on `PATH`; call the
+interpreter by its full path then. PyAV and OpenCV each bundle their own
+`libavdevice`, so every start prints `objc[…]: Class AVFFrameReceiver is
+implemented in both …` warnings. VISTLabel never captures from a device,
+and the test suite passes with them.
+
 ## Configure
 
 ```bash
 cp config/app.example.yaml config/app.yaml     # PowerShell: Copy-Item
+vistlabel auth set-password --username lab     # creates the single account
 ```
+
+VISTLabel has exactly one user account, and every page and API call needs
+a signed-in session (see [Account and sign-in](#account-and-sign-in)).
+`set-password` prompts twice for the password (at least 8 characters);
+without a terminal (scripts, batch jobs) it reads `VISTLABEL_PASSWORD` from
+the environment instead. Run it with the same `config/app.yaml` (or
+`--config`) as the server: the account is stored under `workspace.root`.
 
 Every value in `config/app.yaml` can be overridden with a
 `VISTLABEL_<SECTION>__<KEY>` environment variable, e.g.
@@ -94,7 +139,14 @@ git-ignored. Important keys:
 | `upload.normalize_variable_frame_rate` | Re-time variable-frame-rate recordings to a constant rate before indexing. |
 | `models.sam21` / `sam3` / `yolo_sam` | Optional local model backends: `enabled` and checkpoint paths. |
 | `export.*` | Defaults the export dialog's "Project default" stands for (format, layout, image type, multi-part policy). |
-| `auth.enabled` / `auth.api_keys` | Optional shared-key check for the API. Keep localhost binding as the main protection. |
+| `security.session_timeout_minutes` | Sliding inactivity timeout of a browser session (default 120). |
+| `security.secure_cookies` | Mark the session cookie `Secure`; set `true` behind an HTTPS reverse proxy. |
+| `security.login_rate_limit` / `login_rate_window_seconds` | Failed sign-in attempts allowed per client within the window (default 10 per 300 s). |
+
+The password is never read from `config/app.yaml`. The former `auth`
+section (shared `Authorization: Bearer` API keys) was replaced by the
+sign-in; a config that still has it is rejected at start with a message
+saying so.
 
 `config/app.example.yaml` shows the common keys; every key with its
 default is defined in `src/vistlabel/settings.py`.
@@ -102,17 +154,23 @@ default is defined in `src/vistlabel/settings.py`.
 ## Run
 
 ```bash
+vistlabel version                               # prints the installed version
 vistlabel serve --host 127.0.0.1 --port 9080
 ```
 
-Then open <http://127.0.0.1:9080> and follow the
+Then open <http://127.0.0.1:9080>, sign in and follow the
 [user guide](docs/user-guide.md). Useful endpoints: `/` (UI), `/help` (the
 guides and shortcuts), `/api/v1/health`, `/api/v1/version`,
-`/api/v1/models`, `/api/v1/metrics`.
+`/api/v1/models`, `/api/v1/metrics`. Only `/login`, `/setup`,
+`/api/v1/health`, `/api/v1/version` and the static assets answer without a
+session; until an account exists, every page redirects to `/setup`, which
+says how to create it.
 
-On a machine with several GPUs, `./run-vistlabel.sh --gpu 0` (Git Bash or
-Linux) or `.\scripts\win32\run-vistlabel.ps1 -GpuIndex 0` pins the server to
-one card; other arguments go to `vistlabel serve`.
+On a machine with several NVIDIA GPUs, `./run-vistlabel.sh --gpu 0` (Git
+Bash or Linux) or `.\scripts\win32\run-vistlabel.ps1 -GpuIndex 0` pins the
+server to one card; other arguments go to `vistlabel serve`. Both scripts
+need `nvidia-smi` and refuse to start without it (e.g. on macOS); start
+`vistlabel serve` directly there.
 
 Remote access over SSH:
 
@@ -120,15 +178,51 @@ Remote access over SSH:
 ssh -N -L 9080:127.0.0.1:9080 user@workstation     # then open http://127.0.0.1:9080
 ```
 
+### Account and sign-in
+
+| Command | Effect |
+| --- | --- |
+| `vistlabel auth set-password --username <name>` | Creates the account, or changes its name and password; also signs out every browser session. |
+| `vistlabel auth status` | Shows the account and the number of active sessions (exit code `1` when no account exists). |
+| `vistlabel auth revoke-sessions` | Signs out every browser session. |
+
+Each command takes `--config` like `serve`. The account lives in
+`workspace.root/auth/account.json` as an Argon2id hash, never as the
+password; sessions are server-side (`auth/sessions.json`, only a hash of
+each token) and survive a server restart. The browser holds an opaque
+`HttpOnly`, `SameSite=Lax` cookie, and every state-changing API request
+must carry `X-Requested-With: VISTLabel` from the same origin, which blocks
+cross-site request forgery. Failed sign-ins are rate limited per client.
+Scripts that call the API sign in the same way: `POST /api/v1/auth/login`
+with `{"username": …, "password": …}` and that header, then reuse the
+`vistlabel_session` cookie.
+
+The server speaks plain HTTP. Keep it on `127.0.0.1` and reach it through
+the SSH tunnel above, or put a TLS reverse proxy in front and set
+`security.secure_cookies: true`.
+
 For a project with data to look at straight away:
 
 ```bash
 python scripts/create_demo_project.py --workspace ./workspace
 ```
 
-Everything the application stores (projects, videos, frame caches,
-annotations, exports) lives under `workspace.root`; back up that directory
-while the server is stopped.
+The script looks for FFmpeg on `PATH` only; where it isn't there, pass
+`--ffmpeg-dir <dir>` (it reads neither `runtime.ffmpeg_dir` nor the
+environment).
+
+Everything the application stores (the account and sessions in `auth/`,
+projects with their videos, frame caches, annotations and exports in
+`projects/`) lives under `workspace.root`; back up that directory while the
+server is stopped.
+
+### Version
+
+The version is defined once, in `pyproject.toml` (currently `1.0.0`), and
+read from the installed package metadata: `vistlabel version` or
+`vistlabel --version`, `GET /api/v1/version`, `GET /api/v1/health`
+(`package_version`) and the **System status** dialog all show it. After
+changing it, reinstall (`pip install -e .`) so the metadata follows.
 
 ### Optional: model backends
 
@@ -186,8 +280,10 @@ pytest -m gpu                                        # real models; skips withou
 python scripts/generate_help_reference.py --check    # shortcut table in the user guide
 ```
 
-Tests that upload a video need FFmpeg and skip with a clear reason without
-it. The test videos under `tests/fixtures/` are small synthetic clips, not
+The tests create their own throwaway account in a temporary workspace and
+sign in with it (the browser tests through the real sign-in form), so they
+need no `config/app.yaml` and no account. Tests that upload a video need
+FFmpeg and skip with a clear reason without it. The test videos under `tests/fixtures/` are small synthetic clips, not
 real recordings. After editing `src/vistlabel/static/help/shortcuts.json`, run
 `python scripts/generate_help_reference.py` to refresh the user guide's
 table.

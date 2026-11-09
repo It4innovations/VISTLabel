@@ -1175,3 +1175,51 @@ kbd {
     padding: 20px 16px;
   }
 }
+
+/* ---------------------------------------------------------- sign-in */
+
+.lv-page-narrow {
+  max-width: 440px;
+}
+
+.lv-auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 48px;
+  padding: 24px;
+  background: var(--lv-bg-elevated);
+  border-radius: var(--lv-radius);
+  box-shadow: var(--lv-shadow);
+}
+
+.lv-auth-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.lv-auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lv-auth-error {
+  min-height: 1.2em;
+  margin: 0;
+  color: var(--lv-danger);
+}
+
+.lv-auth-code {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: var(--lv-font-mono);
+  background: var(--lv-bg-inset);
+  border-radius: var(--lv-radius);
+}
+
+.lv-user {
+  color: var(--lv-text-secondary);
+  font-size: 13px;
+}

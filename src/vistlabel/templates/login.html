@@ -1,0 +1,39 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISTLabel — Sign in</title>
+  {% include "_theme_head.html" %}
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}?v={{ asset_version }}" />
+</head>
+<body>
+  {% include "_auth_header.html" %}
+
+  <main class="lv-page lv-page-narrow">
+    <section class="lv-auth-card">
+      <h1 class="lv-auth-title">Sign in to VISTLabel</h1>
+      <p class="lv-hint">
+        Single-account, self-hosted annotation workspace. The account is configured on the
+        server with <code>vistlabel auth set-password</code>.
+      </p>
+      <form id="login-form" autocomplete="on" data-next="{{ next }}">
+        <div class="lv-field">
+          <label class="lv-label" for="username">Username</label>
+          <input type="text" id="username" name="username" class="lv-input lv-full-width" required autocomplete="username" autofocus />
+        </div>
+        <div class="lv-field">
+          <label class="lv-label" for="password">Password</label>
+          <input type="password" id="password" name="password" class="lv-input lv-full-width" required autocomplete="current-password" />
+        </div>
+        <p id="login-error" class="lv-auth-error" role="alert"></p>
+        <button type="submit" class="lv-btn lv-btn-primary lv-full-width" id="login-button">Sign in</button>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="{{ url_for('static', path='js/login.js') }}?v={{ asset_version }}"></script>
+</body>
+</html>

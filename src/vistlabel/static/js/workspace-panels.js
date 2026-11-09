@@ -8,6 +8,8 @@
 // setUp() is called by annotation-canvas.js with the hooks it owns
 // (frame navigation, the status line, a reload of the current frame).
 
+const { apiFetch } = await import(`./session.js${new URL(import.meta.url).search}`);
+
 let projectId = null;
 let hooks = {
   goToFrame: () => {},
@@ -20,13 +22,13 @@ let hooks = {
 const el = (id) => document.getElementById(id);
 
 async function apiGet(path) {
-  const response = await fetch(path);
+  const response = await apiFetch(path);
   if (!response.ok) throw new Error(await detailOf(response));
   return response.json();
 }
 
 async function apiSend(method, path, body) {
-  const response = await fetch(path, {
+  const response = await apiFetch(path, {
     method,
     headers: body === undefined ? {} : { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),

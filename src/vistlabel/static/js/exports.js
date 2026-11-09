@@ -4,6 +4,8 @@
 // annotation workspace. Exported as a module so both pages get one
 // implementation: openExportDialog(projectId, projectName).
 
+const { apiFetch } = await import(`./session.js${new URL(import.meta.url).search}`);
+
 const modal = document.getElementById("export-modal");
 
 // Both pages include the dialog partial, but guard anyway so importing this
@@ -57,7 +59,7 @@ function policyLabel(value) {
 async function showPolicyCounts() {
   const counts = { reviewed_only: null, annotated_only: null };
   try {
-    const response = await fetch(`/api/v1/projects/${currentProjectId}/progress`);
+    const response = await apiFetch(`/api/v1/projects/${currentProjectId}/progress`);
     if (response.ok) {
       const progress = await response.json();
       counts.reviewed_only = progress.reviewed_frame_count;
@@ -168,7 +170,7 @@ function formatDate(iso) {
 }
 
 async function renderHistory() {
-  const response = await fetch(`/api/v1/projects/${currentProjectId}/exports`);
+  const response = await apiFetch(`/api/v1/projects/${currentProjectId}/exports`);
   if (!response.ok) return;
   const manifests = await response.json();
   els.history.innerHTML = "";
@@ -233,7 +235,7 @@ async function renderHistory() {
     remove.textContent = "Delete";
     remove.addEventListener("click", async () => {
       remove.disabled = true;
-      const deleted = await fetch(
+      const deleted = await apiFetch(
         `/api/v1/projects/${currentProjectId}/exports/${manifest.export_id}`,
         { method: "DELETE" }
       );
@@ -265,7 +267,7 @@ function pollJob(jobId) {
   els.progressLabel.textContent = "0%";
 
   pollTimer = setInterval(async () => {
-    const response = await fetch(`/api/v1/projects/${currentProjectId}/jobs/${jobId}`);
+    const response = await apiFetch(`/api/v1/projects/${currentProjectId}/jobs/${jobId}`);
     if (!response.ok) {
       stopPolling();
       setStatus(`Lost track of the export job: ${await readError(response)}`, true);
@@ -307,7 +309,7 @@ async function startExport() {
   els.startButton.disabled = true;
   setStatus("Starting export...");
 
-  const response = await fetch(`/api/v1/projects/${currentProjectId}/exports`, {
+  const response = await apiFetch(`/api/v1/projects/${currentProjectId}/exports`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

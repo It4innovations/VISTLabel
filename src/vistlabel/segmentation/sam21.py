@@ -170,7 +170,7 @@ class Sam21Backend:
         checkpoint = str(self._settings.checkpoint)
         model = Sam2VideoModel.from_pretrained(
             checkpoint, local_files_only=True, dtype=dtype
-        ).to(device)  # type: ignore[arg-type]
+        ).to(device)  # type: ignore[arg-type, unused-ignore]
         model.eval()
         processor = Sam2VideoProcessor.from_pretrained(checkpoint, local_files_only=True)
         self._model = model

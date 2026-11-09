@@ -24,6 +24,8 @@
       <a href="/help" id="open-help-link">Help</a>
     </nav>
     <div class="lv-header-right">
+      {% if request.state.session %}<span class="lv-user" id="current-user">{{ request.state.session.username }}</span>
+      <button type="button" class="lv-btn lv-btn-text" id="logout-button">Sign out</button>{% endif %}
       <button type="button" class="lv-btn lv-btn-text" id="open-metrics-button">System status</button>
       <button type="button" class="lv-btn lv-btn-text lv-btn-icon lv-theme-toggle" id="theme-toggle"></button>
     </div>

@@ -189,7 +189,7 @@ class Sam3Backend:
         # scripts/download_models.py, never at request time.
         model = Sam3VideoModel.from_pretrained(
             checkpoint, local_files_only=True, dtype=dtype
-        ).to(device)  # type: ignore[arg-type]
+        ).to(device)  # type: ignore[arg-type, unused-ignore]
         model.eval()
         self._model = model
         self._processor = Sam3VideoProcessor.from_pretrained(checkpoint, local_files_only=True)
@@ -213,7 +213,7 @@ class Sam3Backend:
         checkpoint = str(self._settings.checkpoint)
         model = Sam3TrackerVideoModel.from_pretrained(
             checkpoint, local_files_only=True, dtype=dtype
-        ).to(device)  # type: ignore[arg-type]
+        ).to(device)  # type: ignore[arg-type, unused-ignore]
         model.eval()
         self._tracker_model = model
         self._tracker_processor = Sam3TrackerVideoProcessor.from_pretrained(

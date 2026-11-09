@@ -34,6 +34,19 @@ def projects_root(workspace_root: Path) -> Path:
     return workspace_root / "projects"
 
 
+def auth_dir(workspace_root: Path) -> Path:
+    """The single account and its browser sessions, beside ``projects/``."""
+    return workspace_root / "auth"
+
+
+def account_file(workspace_root: Path) -> Path:
+    return auth_dir(workspace_root) / "account.json"
+
+
+def sessions_file(workspace_root: Path) -> Path:
+    return auth_dir(workspace_root) / "sessions.json"
+
+
 def project_dir(workspace_root: Path, project_id: str) -> Path:
     return projects_root(workspace_root) / project_id
 

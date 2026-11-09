@@ -19,20 +19,26 @@
 # therefore MACHINE SPECIFIC: they resolve only from the CUDA 13 PyTorch
 # index and only run on a driver that serves CUDA 13.x (580+). On a host
 # with an older driver, install the torch pair for that driver's CUDA
-# version first (see README, "Prerequisites"), then install the rest of
-# this file -- everything else here is CUDA-agnostic:
-#   pip install -r requirements-lock.txt --no-deps  # or drop the two torch lines
+# version first (see README, "Optional: model backends"), then install the
+# rest of this file without the two torch lines -- everything else here is
+# CUDA-agnostic (--no-deps alone does not help: pip still has to resolve
+# the +cu130 pins and fails). On macOS there is no +cu130 build at all.
 # A mismatched wheel does not degrade to CPU; it fails every allocation
 # with cudaErrorDevicesUnavailable.
 #
 # Regenerated: 2026-07-25, Python 3.13.13, Windows 11.
+# argon2-cffi, argon2-cffi-bindings, cffi and pycparser added 2026-11-09
+# for the sign-in (versions installed and tested on this workstation).
 accelerate==1.14.0
 annotated-doc==0.0.4
 annotated-types==0.8.0
 anyio==4.14.2
+argon2-cffi==25.1.0
+argon2-cffi-bindings==26.1.0
 ast_serialize==0.6.0
 av==18.0.0
 certifi==2026.7.22
+cffi==2.1.1
 charset-normalizer==3.4.9
 click==8.4.2
 colorama==0.4.6
@@ -76,6 +82,7 @@ polars==1.43.0
 polars-runtime-32==1.43.0
 psutil==7.2.2
 pycocotools==2.0.11
+pycparser==3.12
 pydantic==2.13.4
 pydantic-settings==2.14.2
 pydantic_core==2.46.4
