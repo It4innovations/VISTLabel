@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="640" viewBox="0 0 1100 640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Propagation run (TrackingRunManifest) state machine</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .s { fill:#ffffff; stroke:#334155; stroke-width:1.8; }
+      .run { fill:#dbeafe; stroke:#1d4ed8; stroke-width:2; }
+      .ok { fill:#dcfce7; stroke:#15803d; stroke-width:1.8; }
+      .bad { fill:#fee2e2; stroke:#b91c1c; stroke-width:1.8; }
+      .hold { fill:#fef3c7; stroke:#b45309; stroke-width:1.8; }
+      .n { font-size:15px; font-weight:700; fill:#0f172a; }
+      .d { font-size:11.5px; fill:#475569; }
+      .e { font-size:12px; fill:#1e293b; }
+      .ln { stroke:#334155; stroke-width:1.5; fill:none; marker-end:url(#arr); }
+    </style>
+  </defs>
+  <rect width="1100" height="640" fill="#ffffff"/>
+  <text x="550" y="30" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">Propagation run state machine (TrackingRunStatus)</text>
+
+  <!-- start -->
+  <circle cx="70" cy="250" r="10" fill="#0f172a"/>
+  <path d="M80,250 L208,250" class="ln"/>
+  <text x="88" y="236" class="e">POST …/propagate</text>
+  <text x="88" y="270" class="d">job submitted,</text>
+  <text x="88" y="284" class="d">manifest created</text>
+
+  <!-- running -->
+  <rect x="210" y="200" width="220" height="100" rx="18" class="run"/>
+  <text x="320" y="230" text-anchor="middle" class="n">running</text>
+  <text x="320" y="252" text-anchor="middle" class="d">for each chunk: predict, write</text>
+  <text x="320" y="267" text-anchor="middle" class="d">frames, then save</text>
+  <text x="320" y="282" text-anchor="middle" class="d">last_completed_frame</text>
+
+  <!-- completed -->
+  <rect x="640" y="60" width="200" height="70" rx="18" class="ok"/>
+  <text x="740" y="92" text-anchor="middle" class="n">completed</text>
+  <text x="740" y="112" text-anchor="middle" class="d">all chunks committed</text>
+  <path d="M400,200 L640,100" class="ln"/>
+  <text x="470" y="132" class="e">last chunk done</text>
+
+  <!-- failed -->
+  <rect x="640" y="165" width="200" height="70" rx="18" class="bad"/>
+  <text x="740" y="197" text-anchor="middle" class="n">failed</text>
+  <text x="740" y="217" text-anchor="middle" class="d">exception; error stored</text>
+  <path d="M430,232 L640,205" class="ln"/>
+  <text x="500" y="207" class="e">backend / I/O error</text>
+
+  <!-- cancelled -->
+  <rect x="860" y="290" width="200" height="80" rx="18" class="bad"/>
+  <text x="960" y="322" text-anchor="middle" class="n">cancelled</text>
+  <text x="960" y="342" text-anchor="middle" class="d">committed frames kept;</text>
+  <text x="960" y="357" text-anchor="middle" class="d">resume no longer possible</text>
+  <path d="M430,262 C600,262 760,300 858,322" class="ln"/>
+  <text x="610" y="302" class="e">Cancel (job cancel event,</text>
+  <text x="610" y="317" class="e">checked per prediction)</text>
+
+  <!-- paused -->
+  <rect x="210" y="420" width="220" height="90" rx="18" class="hold"/>
+  <text x="320" y="452" text-anchor="middle" class="n">paused</text>
+  <text x="320" y="474" text-anchor="middle" class="d">stopped at a chunk boundary</text>
+  <text x="320" y="489" text-anchor="middle" class="d">(job status: paused)</text>
+  <path d="M290,300 L290,418" class="ln"/>
+  <text x="140" y="352" class="e">…/pause</text>
+  <text x="140" y="367" class="d">pause event, honoured</text>
+  <text x="140" y="381" class="d">before next chunk</text>
+  <path d="M350,418 L350,302" class="ln"/>
+  <text x="360" y="352" class="e">…/resume</text>
+  <text x="360" y="367" class="d">new job attempt, re-seed</text>
+  <text x="360" y="381" class="d">from last_completed_frame</text>
+
+  <!-- interrupted -->
+  <rect x="560" y="420" width="240" height="90" rx="18" class="hold"/>
+  <text x="680" y="452" text-anchor="middle" class="n">interrupted</text>
+  <text x="680" y="474" text-anchor="middle" class="d">found "running" at startup</text>
+  <text x="680" y="489" text-anchor="middle" class="d">(never resumed automatically)</text>
+  <path d="M430,285 C540,320 620,370 660,418" class="ln"/>
+  <text x="655" y="378" class="e">process restart</text>
+  <path d="M590,420 C540,380 470,330 418,302" class="ln"/>
+  <text x="446" y="405" class="e">…/resume (explicit)</text>
+
+  <!-- cancel from paused / interrupted -->
+  <path d="M430,480 C620,560 860,520 940,372" class="ln"/>
+  <path d="M800,450 C860,430 900,400 920,372" class="ln"/>
+  <text x="800" y="565" class="e">…/tracking-runs/{id}/cancel</text>
+  <text x="800" y="580" class="d">(from paused or interrupted)</text>
+
+  <!-- legend -->
+  <rect x="40" y="560" width="300" height="60" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+  <text x="52" y="580" class="d">run_id is stable across attempts; job_id changes</text>
+  <text x="52" y="596" class="d">with each resume. A crash mid-chunk re-does only</text>
+  <text x="52" y="612" class="d">that chunk; earlier frames are already on disk.</text>
+</svg>

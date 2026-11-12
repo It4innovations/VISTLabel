@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 
 import pytest
@@ -16,7 +17,7 @@ from vistlabel.api.help import HELP_INDEX
 from vistlabel.help.shortcuts import load_shortcuts
 
 
-def test_help_index_lists_every_page_and_the_shortcuts(api_client: TestClient) -> None:
+def test_help_index_lists_every_page_and_links_the_shortcuts(api_client: TestClient) -> None:
     response = api_client.get("/help")
 
     assert response.status_code == 200
@@ -24,9 +25,15 @@ def test_help_index_lists_every_page_and_the_shortcuts(api_client: TestClient) -
     body = response.text
     for page in HELP_INDEX:
         assert f'href="/help/{page.name}"' in body, page.name
-    assert 'id="shortcut-table"' in body
+    # The shortcut table lives only in the user guide; the overview links to it.
+    assert 'href="/help/user-guide#keyboard-shortcuts"' in body
     for shortcut in load_shortcuts():
-        assert str(escape(shortcut["description"])) in body
+        assert str(escape(shortcut["description"])) not in body
+
+    guide = html.unescape(api_client.get("/help/user-guide").text)
+    assert guide.count('id="keyboard-shortcuts"') == 1
+    for shortcut in load_shortcuts():
+        assert shortcut["description"] in guide
 
 
 @pytest.mark.parametrize("name", [page.name for page in HELP_INDEX])
@@ -77,6 +84,50 @@ def test_path_traversal_never_reads_outside_the_help_pages(api_client: TestClien
     ):
         response = api_client.get(path)
         assert "[build-system]" not in response.text
+
+
+def test_help_images_are_served_from_the_docs_images_folder(api_client: TestClient) -> None:
+    response = api_client.get("/help/images/01-sign-in.png")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.content[1:4] == b"PNG"
+
+    svg = api_client.get("/help/images/architecture.svg")
+    assert svg.status_code == 200
+    assert svg.headers["content-type"].startswith("image/svg+xml")
+    assert "sandbox" in svg.headers["content-security-policy"]
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/help/images/does-not-exist.png",
+        "/help/images/user-guide.md",  # not an image type
+        "/help/images/..%2Fuser-guide.md",
+        "/help/images/..%5C..%5Cpyproject.toml",
+        "/help/images/%2E%2E",
+    ],
+)
+def test_help_images_refuse_anything_else(api_client: TestClient, path: str) -> None:
+    response = api_client.get(path)
+
+    assert response.status_code == 404
+    assert "[build-system]" not in response.text
+
+
+def test_help_images_need_a_session(anonymous_client: TestClient) -> None:
+    response = anonymous_client.get("/help/images/01-sign-in.png", follow_redirects=False)
+
+    assert response.status_code in (303, 401)
+
+
+def test_the_user_guide_shows_its_screenshots(api_client: TestClient) -> None:
+    body = api_client.get("/help/user-guide").text
+
+    assert '<img src="/help/images/01-sign-in.png" alt="Sign-in page"' in body
+    assert "<figcaption>Sign-in page</figcaption>" in body
 
 
 def test_project_list_links_to_help(api_client: TestClient) -> None:

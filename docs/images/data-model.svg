@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="1200" height="900" viewBox="0 0 1200 900" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>VISTLabel data model and on-disk layout</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .tree { white-space:pre; font-family: Consolas, "Courier New", monospace; font-size:12.5px; fill:#1e293b; }
+      .cm { font-family: Consolas, "Courier New", monospace; font-size:11.5px; fill:#64748b; }
+      .ent { fill:#ffffff; stroke:#334155; stroke-width:1.4; }
+      .hd { fill:#e2e8f0; stroke:#334155; stroke-width:1.4; }
+      .hd2 { fill:#dbeafe; stroke:#334155; stroke-width:1.4; }
+      .hd3 { fill:#fef3c7; stroke:#334155; stroke-width:1.4; }
+      .hd4 { fill:#dcfce7; stroke:#334155; stroke-width:1.4; }
+      .hd5 { fill:#fae8ff; stroke:#334155; stroke-width:1.4; }
+      .h { font-size:13.5px; font-weight:700; fill:#0f172a; }
+      .f { font-size:11.8px; fill:#1e293b; }
+      .fs { font-size:11px; fill:#64748b; }
+      .ln { stroke:#475569; stroke-width:1.3; fill:none; marker-end:url(#arr); }
+      .lab { font-size:11px; fill:#475569; }
+    </style>
+  </defs>
+  <rect width="1200" height="900" fill="#ffffff"/>
+  <text x="600" y="30" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">Data model (Pydantic schemas) and on-disk workspace layout</text>
+
+  <!-- Left: tree -->
+  <rect x="20" y="50" width="420" height="830" rx="10" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 4"/>
+  <text x="35" y="72" class="h">workspace.root/</text>
+  <text x="35" y="94" class="tree">├─ auth/</text>
+  <text x="35" y="112" class="tree">│  ├─ account.json</text><text x="215" y="112" class="cm">Account (Argon2id hash)</text>
+  <text x="35" y="130" class="tree">│  └─ sessions.json</text><text x="215" y="130" class="cm">SessionFile (token hashes)</text>
+  <text x="35" y="148" class="tree">└─ projects/</text>
+  <text x="35" y="166" class="tree">   ├─ .tmp-&lt;uuid&gt;/</text><text x="215" y="166" class="cm">creation staging, removed</text>
+  <text x="215" y="182" class="cm">at startup if left over</text>
+  <text x="35" y="200" class="tree">   └─ prj_&lt;ULID&gt;/</text>
+  <text x="35" y="218" class="tree">      ├─ project.json</text><text x="250" y="218" class="cm">ProjectState</text>
+  <text x="35" y="236" class="tree">      ├─ labels.json</text><text x="250" y="236" class="cm">LabelsFile</text>
+  <text x="35" y="254" class="tree">      ├─ source/video.mp4</text><text x="250" y="254" class="cm">finalized video</text>
+  <text x="35" y="272" class="tree">      ├─ cache/</text><text x="250" y="272" class="cm">disposable</text>
+  <text x="35" y="290" class="tree">      │  ├─ frame_timestamps.json</text>
+  <text x="35" y="308" class="tree">      │  ├─ frames/000123.jpg</text>
+  <text x="35" y="326" class="tree">      │  ├─ thumbnails/000000.jpg</text>
+  <text x="35" y="344" class="tree">      │  └─ model_sessions/</text><text x="270" y="344" class="cm">reserved</text>
+  <text x="35" y="362" class="tree">      ├─ annotations/</text>
+  <text x="35" y="380" class="tree">      │  ├─ objects.json</text><text x="250" y="380" class="cm">ObjectsFile</text>
+  <text x="35" y="398" class="tree">      │  ├─ deleted_objects/</text><text x="250" y="398" class="cm">DeletedObject</text>
+  <text x="35" y="416" class="tree">      │  │   &lt;object_id&gt;.json</text><text x="250" y="416" class="cm">(undo of delete)</text>
+  <text x="35" y="434" class="tree">      │  └─ frames/&lt;shard&gt;/</text><text x="250" y="434" class="cm">shard = index // 1000</text>
+  <text x="35" y="452" class="tree">      │      000123.json</text><text x="250" y="452" class="cm">FrameAnnotation</text>
+  <text x="35" y="470" class="tree">      ├─ prompts/frames/</text><text x="250" y="470" class="cm">reserved</text>
+  <text x="35" y="488" class="tree">      ├─ tracking/</text>
+  <text x="35" y="506" class="tree">      │  ├─ runs/run_&lt;id&gt;.json</text><text x="270" y="506" class="cm">TrackingRunManifest</text>
+  <text x="35" y="524" class="tree">      │  └─ checkpoints/</text><text x="270" y="524" class="cm">reserved</text>
+  <text x="35" y="542" class="tree">      ├─ jobs/job_&lt;id&gt;.json</text><text x="250" y="542" class="cm">JobRecord</text>
+  <text x="35" y="560" class="tree">      ├─ locks/editor.lock.json</text><text x="270" y="560" class="cm">LockInfo</text>
+  <text x="35" y="578" class="tree">      ├─ logs/events.jsonl</text><text x="250" y="578" class="cm">append-only</text>
+  <text x="35" y="596" class="tree">      └─ exports/&lt;export_id&gt;/</text>
+  <text x="35" y="614" class="tree">         ├─ export_manifest.json</text>
+  <text x="35" y="632" class="tree">         ├─ validation_report.json</text>
+  <text x="35" y="650" class="tree">         ├─ dataset.zip</text>
+  <text x="35" y="668" class="tree">         ├─ images/{train,val}/  ┐</text>
+  <text x="35" y="686" class="tree">         ├─ labels/{train,val}/  │</text><text x="290" y="686" class="cm">ultralytics</text>
+  <text x="35" y="704" class="tree">         ├─ annotations/         │</text>
+  <text x="35" y="722" class="tree">         │  instances_*.json     │</text>
+  <text x="35" y="740" class="tree">         ├─ dataset.yaml         ┘</text>
+  <text x="35" y="758" class="tree">         └─ train/, valid/       ─</text><text x="290" y="758" class="cm">coco (RF-DETR)</text>
+  <text x="35" y="776" class="tree">            _annotations.coco.json</text>
+  <text x="35" y="810" class="fs">Every JSON document is written atomically (temp file in the</text>
+  <text x="35" y="826" class="fs">same directory, flush, fsync, os.replace) and carries a</text>
+  <text x="35" y="842" class="fs">schema_version checked by persistence.migrations on read.</text>
+  <text x="35" y="858" class="fs">Directory names are server-generated ids, never user input.</text>
+
+  <!-- ProjectState -->
+  <rect x="470" y="50" width="350" height="26" class="hd2"/><text x="480" y="68" class="h">ProjectState  (project.json)</text>
+  <rect x="470" y="76" width="350" height="190" class="ent"/>
+  <text x="480" y="94" class="f">project_id: prj_ + 26-char ULID · name · revision</text>
+  <text x="480" y="112" class="f">status: pending | new | in_progress | done | archived</text>
+  <text x="480" y="130" class="f">created_at, modified_at</text>
+  <text x="480" y="148" class="f">source: SourceVideoInfo (codec, size, fps, sha256,</text>
+  <text x="480" y="164" class="f">   frame_count, variable_frame_rate, import_options,</text>
+  <text x="480" y="180" class="f">   original: OriginalVideoInfo | null)</text>
+  <text x="480" y="198" class="f">ui_state: last frame, selected object, backend, zoom</text>
+  <text x="480" y="216" class="f">progress: annotated / reviewed / total frames</text>
+  <text x="480" y="234" class="f">split_assignments: [FrameRangeAssignment</text>
+  <text x="480" y="250" class="f">   (start_frame, end_frame, train | val | excluded)]</text>
+
+  <!-- Labels -->
+  <rect x="850" y="50" width="330" height="26" class="hd2"/><text x="860" y="68" class="h">LabelsFile  (labels.json)</text>
+  <rect x="850" y="76" width="330" height="76" class="ent"/>
+  <text x="860" y="94" class="f">labels: [LabelDefinition(label_id, name, color)]</text>
+  <text x="860" y="112" class="f">ids and names unique; list order = exported</text>
+  <text x="860" y="128" class="f">class number; label_id is stable identity</text>
+  <text x="860" y="144" class="fs">starts empty, grows on first use of a name</text>
+
+  <!-- Objects -->
+  <rect x="850" y="175" width="330" height="26" class="hd2"/><text x="860" y="193" class="h">ObjectsFile  (annotations/objects.json)</text>
+  <rect x="850" y="201" width="330" height="128" class="ent"/>
+  <text x="860" y="219" class="f">revision (optimistic concurrency)</text>
+  <text x="860" y="237" class="f">objects: [ObjectRecord]</text>
+  <text x="860" y="255" class="f">  object_id, label_id, label_name</text>
+  <text x="860" y="273" class="f">  annotation_mode: modal_visible</text>
+  <text x="860" y="291" class="f">  supports_multiple_components, active, locked</text>
+  <text x="860" y="309" class="f">  geometry_hint: elongated_axis polyline | null</text>
+  <path d="M1015,152 L1015,173" class="ln"/><text x="1022" y="167" class="lab">label_id</text>
+
+  <!-- FrameAnnotation -->
+  <rect x="470" y="300" width="350" height="26" class="hd3"/><text x="480" y="318" class="h">FrameAnnotation  (frames/&lt;shard&gt;/NNNNNN.json)</text>
+  <rect x="470" y="326" width="350" height="164" class="ent"/>
+  <text x="480" y="344" class="f">frame_index, timestamp_seconds, revision</text>
+  <text x="480" y="362" class="f">review_status: unreviewed | needs_review | reviewed</text>
+  <text x="480" y="380" class="f">review_comment</text>
+  <text x="480" y="398" class="f">objects: [FrameObjectAnnotation]</text>
+  <text x="480" y="416" class="f">inactive_objects: [FrameObjectAnnotation]</text>
+  <text x="480" y="434" class="f">occlusion_edges: [OcclusionEdge(occluder,</text>
+  <text x="480" y="450" class="f">   occluded, relation=in_front_of)]</text>
+  <text x="480" y="468" class="f">excluded: bool ("Delete frame")</text>
+  <text x="480" y="484" class="fs">is_annotated = not excluded and any mask non-empty</text>
+
+  <rect x="850" y="360" width="330" height="26" class="hd3"/><text x="860" y="378" class="h">FrameObjectAnnotation</text>
+  <rect x="850" y="386" width="330" height="200" class="ent"/>
+  <text x="860" y="404" class="f">object_id, label_id</text>
+  <text x="860" y="422" class="f">visible_mask_rle: RleMask(size=(h, w), counts)</text>
+  <text x="860" y="438" class="fs">   canonical COCO compressed RLE (pycocotools)</text>
+  <text x="860" y="456" class="f">connected_component_count</text>
+  <text x="860" y="474" class="f">occlusion_state: visible | partially_occluded</text>
+  <text x="860" y="490" class="f">   | fully_occluded (derived from part count)</text>
+  <text x="860" y="508" class="f">source (e.g. fake_propagation), confidence</text>
+  <text x="860" y="526" class="f">manually_modified: bool</text>
+  <text x="860" y="544" class="f">backend_provenance: backend_id, model_name,</text>
+  <text x="860" y="560" class="f">   checkpoint_sha256, code_revision, operation_id</text>
+  <text x="860" y="578" class="f">review_reasons: [ReviewReason]</text>
+  <path d="M820,407 L848,407" class="ln"/>
+  <path d="M1080,386 L1080,331" class="ln"/><text x="1088" y="360" class="lab">object_id</text>
+
+  <!-- Tracking run -->
+  <rect x="470" y="520" width="350" height="26" class="hd5"/><text x="480" y="538" class="h">TrackingRunManifest  (tracking/runs/)</text>
+  <rect x="470" y="546" width="350" height="164" class="ent"/>
+  <text x="480" y="564" class="f">run_id (stable) · job_id (current attempt)</text>
+  <text x="480" y="582" class="f">backend_id, object_ids, direction</text>
+  <text x="480" y="600" class="f">start_frame, end_frame, chunk_frames</text>
+  <text x="480" y="618" class="f">last_completed_frame  ← checkpoint</text>
+  <text x="480" y="636" class="f">status: running | paused | completed |</text>
+  <text x="480" y="652" class="f">   cancelled | failed | interrupted</text>
+  <text x="480" y="670" class="f">manual_masks_protected_count</text>
+  <text x="480" y="688" class="f">overwrite_manual_masks, error</text>
+  <text x="480" y="704" class="fs">created_at, updated_at</text>
+
+  <rect x="850" y="610" width="330" height="26" class="hd5"/><text x="860" y="628" class="h">JobRecord  (jobs/)</text>
+  <rect x="850" y="636" width="330" height="74" class="ent"/>
+  <text x="860" y="654" class="f">job_id, job_type (propagate, export, …)</text>
+  <text x="860" y="672" class="f">status: pending | running | succeeded |</text>
+  <text x="860" y="688" class="f">   failed | cancelled | paused</text>
+  <text x="860" y="704" class="f">progress_fraction, error</text>
+  <path d="M820,660 L848,660" class="ln"/><text x="826" y="652" class="lab">job_id</text>
+
+  <!-- Export -->
+  <rect x="470" y="740" width="350" height="26" class="hd4"/><text x="480" y="758" class="h">ExportManifest  (export_manifest.json)</text>
+  <rect x="470" y="766" width="350" height="114" class="ent"/>
+  <text x="480" y="784" class="f">export_id, project_id, source_video_sha256</text>
+  <text x="480" y="802" class="f">status, job_id, frame_selection_policy</text>
+  <text x="480" y="820" class="f">yolo_multipart_policy, annotation_type,</text>
+  <text x="480" y="836" class="f">   dataset_layout, image_format</text>
+  <text x="480" y="854" class="f">negative_frame_fraction, frame counts</text>
+  <text x="480" y="872" class="f">(total, train, val, negative), error</text>
+
+  <rect x="850" y="740" width="330" height="26" class="hd4"/><text x="860" y="758" class="h">ValidationReport</text>
+  <rect x="850" y="766" width="330" height="114" class="ent"/>
+  <text x="860" y="784" class="f">image_count, object_count_by_class</text>
+  <text x="860" y="802" class="f">multipart / bridge / split conversions</text>
+  <text x="860" y="820" class="f">dropped_instances, invalid_polygons,</text>
+  <text x="860" y="836" class="f">   tiny_masks, missing labels</text>
+  <text x="860" y="854" class="f">frame_leakage_risks, provenance summary</text>
+  <text x="860" y="872" class="f">warnings, errors</text>
+  <path d="M820,820 L848,820" class="ln"/>
+</svg>

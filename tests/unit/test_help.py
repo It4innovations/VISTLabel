@@ -14,7 +14,7 @@ from types import ModuleType
 import pytest
 
 from vistlabel.api.help import HELP_INDEX
-from vistlabel.help.markdown import render_markdown, rewrite_link, slugify
+from vistlabel.help.markdown import render_markdown, rewrite_image, rewrite_link, slugify
 from vistlabel.help.shortcuts import load_shortcuts, merge_shortcut_table
 
 REPO = Path(__file__).resolve().parents[2]
@@ -188,3 +188,49 @@ def test_registry_lists_the_workspace_keyboard_handler_keys() -> None:
     }
     assert handled, "keyboard handler not found"
     assert handled <= documented, f"undocumented shortcuts: {sorted(handled - documented)}"
+
+
+def test_a_lone_image_becomes_a_captioned_figure() -> None:
+    html = render_markdown('![Sign-in "page"](images/01-sign-in.png)').html
+
+    assert html == (
+        '<figure class="lv-help-figure"><img src="/help/images/01-sign-in.png" '
+        'alt="Sign-in &quot;page&quot;" loading="lazy" />'
+        '<figcaption>Sign-in "page"</figcaption></figure>'
+    )
+
+
+def test_an_image_inside_text_stays_inline() -> None:
+    html = render_markdown("Click ![gear](./images/gear.svg) to open it.").html
+
+    image = '<img src="/help/images/gear.svg" alt="gear" loading="lazy" />'
+    assert html == f"<p>Click {image} to open it.</p>"
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://example.com/x.png",  # never load anything from the network
+        "/static/img/it4i-logo.png",
+        "../images/x.png",
+        "images/../../pyproject.toml",
+        "images/sub/x.png",
+        "images/x.exe",
+        "images/x.png?raw=1",
+        "javascript:alert`1`",
+    ],
+)
+def test_images_outside_the_docs_images_folder_keep_only_their_alt_text(target: str) -> None:
+    assert rewrite_image(target) is None
+    html = render_markdown(f"![the alt]({target})").html
+    assert html == "<p>the alt</p>"
+    assert "<img" not in html
+
+
+def test_every_image_of_the_served_pages_exists() -> None:
+    for name in SERVED:
+        rendered = render_markdown((DOCS / f"{name}.md").read_text(encoding="utf-8"), SERVED)
+        sources = re.findall(r'<img src="/help/images/([^"]+)"', rendered.html)
+        assert sources, name
+        for source in sources:
+            assert (DOCS / "images" / source).is_file(), source

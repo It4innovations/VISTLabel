@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>VISTLabel annotation workflow</title>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .st { fill:#ffffff; stroke:#334155; stroke-width:1.5; }
+      .a { fill:#eff6ff; stroke:#2563eb; stroke-width:1.5; }
+      .p { fill:#fdf4ff; stroke:#a21caf; stroke-width:1.5; }
+      .r { fill:#fffbeb; stroke:#d97706; stroke-width:1.5; }
+      .e { fill:#f0fdf4; stroke:#16a34a; stroke-width:1.5; }
+      .n { fill:#f8fafc; stroke:#94a3b8; stroke-width:1; stroke-dasharray:5 4; }
+      .h { font-size:15px; font-weight:600; fill:#0f172a; }
+      .t { font-size:12.5px; fill:#1e293b; }
+      .s { font-size:11.5px; fill:#475569; }
+      .num { font-size:13px; font-weight:700; fill:#ffffff; }
+      .ln { stroke:#475569; stroke-width:1.6; fill:none; marker-end:url(#arr); }
+      .fb { stroke:#d97706; stroke-width:1.4; fill:none; stroke-dasharray:6 4; marker-end:url(#arr); }
+    </style>
+  </defs>
+  <rect width="1200" height="640" fill="#ffffff"/>
+  <text x="600" y="30" text-anchor="middle" font-size="19" font-weight="700" fill="#0f172a">Annotation → propagation → review → export workflow</text>
+
+  <!-- Row 1 -->
+  <g>
+    <rect x="30" y="60" width="250" height="150" rx="10" class="a"/>
+    <circle cx="52" cy="82" r="13" fill="#2563eb"/><text x="52" y="87" text-anchor="middle" class="num">1</text>
+    <text x="74" y="87" class="h">Create project</text>
+    <text x="45" y="112" class="t">MP4 upload (streamed to disk)</text>
+    <text x="45" y="130" class="t">optional downscale (fit box) and</text>
+    <text x="45" y="148" class="t">frame thinning (every nth / target fps)</text>
+    <text x="45" y="170" class="t">or COCO / YOLO dataset ZIP</text>
+    <text x="45" y="195" class="s">ffprobe validation, frame index</text>
+  </g>
+  <path d="M280,135 L318,135" class="ln"/>
+  <g>
+    <rect x="320" y="60" width="250" height="150" rx="10" class="a"/>
+    <circle cx="342" cy="82" r="13" fill="#2563eb"/><text x="342" y="87" text-anchor="middle" class="num">2</text>
+    <text x="364" y="87" class="h">Objects and classes</text>
+    <text x="335" y="112" class="t">one object per tracked instance;</text>
+    <text x="335" y="130" class="t">its name is its class (labels.json)</text>
+    <text x="335" y="148" class="t">class order = exported class id</text>
+    <text x="335" y="170" class="t">rename, merge, lock, delete (undo)</text>
+  </g>
+  <path d="M570,135 L608,135" class="ln"/>
+  <g>
+    <rect x="610" y="60" width="270" height="150" rx="10" class="a"/>
+    <circle cx="632" cy="82" r="13" fill="#2563eb"/><text x="632" y="87" text-anchor="middle" class="num">3</text>
+    <text x="654" y="87" class="h">Segment a key frame</text>
+    <text x="625" y="112" class="t">positive / negative point prompts</text>
+    <text x="625" y="130" class="t">→ candidate mask → Accept</text>
+    <text x="625" y="148" class="t">Shift+click adds a visible part</text>
+    <text x="625" y="170" class="t">SAM 3 text search; YOLO+SAM Auto</text>
+    <text x="625" y="195" class="s">backend: sam21 · sam3 · yolo_sam · fake</text>
+  </g>
+  <path d="M880,135 L918,135" class="ln"/>
+  <g>
+    <rect x="920" y="60" width="250" height="150" rx="10" class="a"/>
+    <circle cx="942" cy="82" r="13" fill="#2563eb"/><text x="942" y="87" text-anchor="middle" class="num">4</text>
+    <text x="964" y="87" class="h">Brush / eraser fix</text>
+    <text x="935" y="112" class="t">strokes saved on mouse release</text>
+    <text x="935" y="130" class="t">mask stored as COCO RLE</text>
+    <text x="935" y="148" class="t">marked manually_modified = true</text>
+    <text x="935" y="170" class="t">undo / redo per object and frame</text>
+  </g>
+
+  <path d="M1045,210 L1045,250 L1045,262" class="ln"/>
+
+  <!-- Row 2 (right to left) -->
+  <g>
+    <rect x="860" y="265" width="310" height="170" rx="10" class="p"/>
+    <circle cx="882" cy="287" r="13" fill="#a21caf"/><text x="882" y="292" text-anchor="middle" class="num">5</text>
+    <text x="904" y="292" class="h">Propagate (background job)</text>
+    <text x="875" y="317" class="t">forward / backward to an end frame,</text>
+    <text x="875" y="335" class="t">every object with a mask on this frame</text>
+    <text x="875" y="353" class="t">chunks of 200 frames = checkpoints</text>
+    <text x="875" y="371" class="t">pause · resume · cancel · survives restart</text>
+    <text x="875" y="389" class="t">skips manually edited / deactivated</text>
+    <text x="875" y="407" class="t">masks unless explicitly overridden</text>
+    <text x="875" y="425" class="s">flags doubtful frames → needs_review</text>
+  </g>
+  <path d="M860,350 L798,350" class="ln"/>
+  <g>
+    <rect x="490" y="265" width="306" height="170" rx="10" class="r"/>
+    <circle cx="512" cy="287" r="13" fill="#d97706"/><text x="512" y="292" text-anchor="middle" class="num">6</text>
+    <text x="534" y="292" class="h">Review</text>
+    <text x="505" y="317" class="t">Queue tab: frames with review reasons</text>
+    <text x="505" y="335" class="t">(disappearance, reappearance, area or</text>
+    <text x="505" y="353" class="t">part-count change, centroid jump, low</text>
+    <text x="505" y="371" class="t">score, border contact, sampling)</text>
+    <text x="505" y="389" class="t">frame status: unreviewed → needs_review</text>
+    <text x="505" y="407" class="t">→ reviewed (R, Solved, Mark all)</text>
+    <text x="505" y="425" class="s">Delete frame excludes it from export</text>
+  </g>
+  <path d="M490,350 L428,350" class="ln"/>
+  <g>
+    <rect x="200" y="265" width="226" height="170" rx="10" class="e"/>
+    <circle cx="222" cy="287" r="13" fill="#16a34a"/><text x="222" y="287" dy="5" text-anchor="middle" class="num">7</text>
+    <text x="244" y="292" class="h">Splits</text>
+    <text x="215" y="317" class="t">inclusive frame ranges:</text>
+    <text x="215" y="335" class="t">train · val · excluded</text>
+    <text x="215" y="357" class="t">none saved → last 20 % of</text>
+    <text x="215" y="375" class="t">exported frames become val</text>
+    <text x="215" y="397" class="t">ranges saved → uncovered</text>
+    <text x="215" y="415" class="t">frames are left out</text>
+  </g>
+  <path d="M313,435 L313,478" class="ln"/>
+
+  <!-- Row 3 -->
+  <g>
+    <rect x="30" y="480" width="560" height="140" rx="10" class="e"/>
+    <circle cx="52" cy="502" r="13" fill="#16a34a"/><text x="52" y="507" text-anchor="middle" class="num">8</text>
+    <text x="74" y="507" class="h">Export (background job)</text>
+    <text x="45" y="532" class="t">frame policy: reviewed · annotated · manually edited · every nth · intervals · all</text>
+    <text x="45" y="550" class="t">annotations: segmentation masks or bounding boxes</text>
+    <text x="45" y="568" class="t">layout: Ultralytics YOLO (images/, labels/, dataset.yaml [+ COCO JSON])</text>
+    <text x="45" y="586" class="t">        or COCO for RF-DETR (train/, valid/ with _annotations.coco.json)</text>
+    <text x="45" y="606" class="s">negative frames, multi-part policy, JPG/PNG; export_manifest.json, validation_report.json</text>
+  </g>
+  <path d="M590,550 L648,550" class="ln"/>
+  <g>
+    <rect x="650" y="500" width="250" height="100" rx="10" class="st"/>
+    <text x="665" y="527" class="h">dataset.zip</text>
+    <text x="665" y="550" class="t">downloaded from Previous exports</text>
+    <text x="665" y="568" class="t">or re-imported as a new project</text>
+    <text x="665" y="586" class="s">(COCO / YOLO dataset import)</text>
+  </g>
+
+  <!-- feedback loops -->
+  <path d="M640,265 L640,240 L745,240 L745,212" class="fb"/>
+  <text x="755" y="244" class="s">fix flagged frames, re-seed and re-propagate</text>
+  <g>
+    <rect x="930" y="480" width="240" height="140" rx="10" class="n"/>
+    <text x="945" y="503" class="h">Always on</text>
+    <text x="945" y="526" class="t">autosave, no Save button</text>
+    <text x="945" y="544" class="t">atomic JSON writes</text>
+    <text x="945" y="562" class="t">optimistic revisions (409)</text>
+    <text x="945" y="580" class="t">append-only events.jsonl</text>
+    <text x="945" y="598" class="t">everything stays local</text>
+  </g>
+</svg>

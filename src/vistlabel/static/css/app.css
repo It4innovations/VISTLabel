@@ -1120,6 +1120,28 @@ kbd {
   margin: 0;
 }
 
+.lv-help-article img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+
+.lv-help-figure {
+  margin: 16px 0 20px;
+}
+
+.lv-help-figure img {
+  display: block;
+  border: 1px solid var(--lv-border-light);
+  border-radius: var(--lv-radius);
+}
+
+.lv-help-figure figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--lv-text-secondary);
+}
+
 .lv-help-article hr {
   margin: 24px 0;
   border: 0;

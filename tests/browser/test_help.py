@@ -24,7 +24,10 @@ def test_help_is_reachable_from_projects_and_its_outline_jumps(
 
     page.click("#open-help-link")
     expect(page).to_have_url(f"{live_server_url}/help")
-    expect(page.locator("#shortcut-table")).to_contain_text("Mark the current frame reviewed")
+    page.click("#shortcuts-link")
+    expect(page).to_have_url(f"{live_server_url}/help/user-guide#keyboard-shortcuts")
+    expect(page.locator("#help-article")).to_contain_text("Mark the current frame reviewed")
+    page.goto(f"{live_server_url}/help")
 
     page.click("#help-index >> text=User guide")
     expect(page).to_have_url(f"{live_server_url}/help/user-guide")

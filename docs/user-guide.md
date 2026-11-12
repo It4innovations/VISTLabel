@@ -29,6 +29,8 @@ Your user name and **Sign out** are in the header of the Projects page and
 the Help page, and **Sign out** is at the right end of the annotation
 workspace's header. Sign out on a shared computer.
 
+![Sign-in page](images/01-sign-in.png)
+
 ## Workflow at a glance
 
 1. [Sign in](#sign-in).
@@ -63,6 +65,8 @@ Each card has:
   the project;
 - **Open**, which opens the [annotation workspace](#annotation-workspace).
 
+![Projects page with a project card](images/02-projects.png)
+
 ### Create a project
 
 Click **Create project**, give it a name and pick the source.
@@ -89,6 +93,10 @@ after the import.
 
 Uploads show a progress bar and can be cancelled.
 
+![Create project dialog with a custom resolution](images/03-create-project.png)
+
+![Projects page after the upload, with the new project card](images/04-projects-after-upload.png)
+
 ## Annotation workspace
 
 The workspace has four areas:
@@ -105,6 +113,8 @@ The workspace has four areas:
   Splits tabs and the Appearance settings.
 
 Everything you change is saved as you go. There is no Save button.
+
+![Annotation workspace: header, tool rail, frame, action bar and side panel](images/05-workspace-empty.png)
 
 ### Frames and playback
 
@@ -225,6 +235,8 @@ administrator to enable a backend.
 
 Nothing is saved until you accept.
 
+![Candidate mask after a positive point prompt (Fake Backend)](images/06-point-prompt.png)
+
 ### Several visible parts
 
 When something covers the middle of an object, such as fingers over a
@@ -237,6 +249,8 @@ The parts stay one object, and the area between them stays unlabelled.
 Put a positive point on **every** visible part before you propagate. A
 single point that ends up under the occluder is often lost for the rest of
 the video, while one point per part tracks through the occlusion.
+
+![An object with two visible parts (partially_occluded) and its occluder](images/09-occlusion-multipart.png)
 
 ### Find objects by description
 
@@ -270,6 +284,8 @@ wheel.
 Each stroke is saved when you release the mouse. A brush-edited mask
 counts as manually edited: propagation won't overwrite it, and the
 **Manually edited only** export option picks exactly those frames.
+
+![Mask corrected with the brush](images/07-brush.png)
 
 ## Undo and redo
 
@@ -306,6 +322,8 @@ With **Notify** ticked, VISTLabel plays a short sound when a run finishes,
 fails or pauses, and shows a browser notification when the tab isn't in
 front. Browser notifications need `https` or `localhost`.
 
+![Propagation finished; action bar with the Propagate controls](images/08-propagation.png)
+
 ### Propagation runs
 
 **Runs** in the header lists every propagation run of the project,
@@ -313,6 +331,8 @@ including ones started in another browser or before a restart. A run can
 be paused, resumed or cancelled there. A run interrupted by a restart is
 never resumed automatically: it is listed as *interrupted* and continues
 from its last saved frame only when you resume it.
+
+![Propagation runs dialog](images/10-tracking-runs.png)
 
 ## Occlusion and axis hints
 
@@ -341,6 +361,8 @@ tab does the same and also takes an optional comment.
 annotated frame that isn't reviewed yet. It tells you how many frames that
 is, including how many are in the queue, before anything changes.
 
+![Review tab after marking all annotated frames reviewed](images/12-review-tab.png)
+
 ### Review queue
 
 The **Queue** tab lists the frames flagged for review, with the reasons
@@ -348,6 +370,8 @@ and any review comment. The number on the tab is how many there are.
 Click an entry to jump to that frame and select the object. Once it looks
 right, click **Solved** to mark the frame reviewed and drop it from the
 queue. **Refresh** reloads the list.
+
+![Review queue with flagged frames and the Solved buttons](images/11-review-queue.png)
 
 ### Delete frame
 
@@ -372,6 +396,8 @@ then click **Save splits**.
 
 The export report also warns when two neighbouring frames land in
 different splits.
+
+![Splits tab with a train and a val range](images/13-splits.png)
 
 ## Export
 
@@ -413,6 +439,12 @@ The other options:
 **Start export** and wait for the progress bar. **Previous exports** lists
 earlier exports with their settings and a **Download ZIP** link.
 
+![Export dialog](images/14-export-dialog.png)
+
+![Export dialog after a finished export, with Previous exports](images/15-export-done.png)
+
+![Content of an exported dataset.zip (Ultralytics layout with exact COCO annotations)](images/16-exported-files.png)
+
 ## System status and theme
 
 **System status** on the Projects page shows the environment checks
@@ -420,6 +452,8 @@ earlier exports with their settings and a **Download ZIP** link.
 aren't, and basic counters. Mention it when you report a problem. The
 sun/moon button in the header switches between the dark and light theme,
 which your browser remembers.
+
+![System status dialog](images/17-system-status.png)
 
 ## Keyboard shortcuts
 

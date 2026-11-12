@@ -5,7 +5,7 @@
 
 It covers what the project documentation uses: ATX headings (with
 GitHub-style anchor ids), paragraphs, fenced code blocks, inline code,
-bold/italic, links, images (reduced to their alt text), ordered and
+bold/italic, links, images, ordered and
 unordered lists (nested by indentation), pipe tables, block quotes and
 horizontal rules. Whole-line HTML comments (the generated-section markers in
 ``docs/user-guide.md``) are dropped, and ``<kbd>`` is the one inline tag
@@ -15,7 +15,11 @@ Everything is HTML-escaped first, so documentation can never inject markup.
 A link to another ``*.md`` document becomes the local ``/help/<name>`` route
 when that document is one of the served Help pages; a link to any other
 repository file (``../README.md``, ``../models/README.md``) is not reachable
-from the browser, so only its label is kept.
+from the browser, so only its label is kept. Likewise an image is shown only
+when it lies in the documentation's ``images/`` folder (served by the
+``/help/images/<file>`` route); any other image is reduced to its alt text.
+An image that stands alone in its paragraph becomes a figure captioned with
+its alt text.
 """
 
 from __future__ import annotations
@@ -32,7 +36,7 @@ _OL = re.compile(r"^(\s*)\d+[.)]\s+(.*)$")
 _TABLE_SEP = re.compile(r"^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$")
 _COMMENT = re.compile(r"^\s*<!--.*-->\s*$")
 _LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
-_IMAGE = re.compile(r"!\[([^\]]*)\]\([^)]*\)")
+_IMAGE = re.compile(r"!\[([^\]]*)\]\(([^)\s]*)\)")
 _CODE = re.compile(r"`([^`]+)`")
 _KBD = re.compile(r"&lt;kbd&gt;(.+?)&lt;/kbd&gt;")
 _BOLD = re.compile(r"\*\*(.+?)\*\*")
@@ -42,6 +46,23 @@ _ITALIC = re.compile(
 _MD_LINK = re.compile(r"^(?:\.{1,2}/)*(?:docs/)?([A-Za-z0-9_\-]+)\.md(#[A-Za-z0-9_\-]+)?$")
 _PLACEHOLDER = re.compile("\x00(\\d+)\x00")
 _SAFE_SCHEMES = ("/", "#", "http://", "https://", "mailto:")
+
+#: Image types the Help pages show, by file extension (also the allow-list
+#: of the ``/help/images/<file>`` route).
+IMAGE_TYPES: dict[str, str] = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+}
+#: A plain file name in ``images/``: no directories, a known extension.
+IMAGE_NAME = re.compile(
+    r"^[A-Za-z0-9_\-]+(?:" + "|".join(re.escape(ext) for ext in IMAGE_TYPES) + r")$",
+    re.IGNORECASE,
+)
+_DOC_IMAGE = re.compile(r"^(?:\./)?(?:docs/)?images/([^/\\]+)$")
 
 
 def slugify(text: str) -> str:
@@ -69,6 +90,25 @@ def rewrite_link(target: str, served: Collection[str] | None = None) -> str | No
     return None
 
 
+def rewrite_image(target: str) -> str | None:
+    """Map an image target to its ``src``, or ``None`` when it is not a file
+    of the documentation's ``images/`` folder.
+
+    ``images/x.png``, ``./images/x.png`` and ``docs/images/x.png`` become
+    ``/help/images/x.png``; external, absolute and ``../`` targets are
+    refused, so the Help pages never load anything from elsewhere."""
+    match = _DOC_IMAGE.match(target)
+    if match and IMAGE_NAME.match(match.group(1)):
+        return f"/help/images/{match.group(1)}"
+    return None
+
+
+def _image_tag(alt: str, src: str) -> str:
+    # ``alt`` is already HTML-escaped without quotes; escape it for an attribute.
+    alt_attr = html.escape(html.unescape(alt), quote=True)
+    return f'<img src="{html.escape(src, quote=True)}" alt="{alt_attr}" loading="lazy" />'
+
+
 def render_inline(text: str, served: Collection[str] | None = None) -> str:
     # Code spans are taken out first and put back last, so nothing inside
     # them is read as emphasis or a link (`docs/*.md`, `[x](y)`).
@@ -83,7 +123,12 @@ def render_inline(text: str, served: Collection[str] | None = None) -> str:
     # <kbd> is the one HTML tag the docs may use. Its content is already
     # escaped, so restoring just the tag pair cannot let markup through.
     escaped = _KBD.sub(lambda m: keep(f"<kbd>{m.group(1)}</kbd>"), escaped)
-    escaped = _IMAGE.sub(lambda m: m.group(1), escaped)
+
+    def image(match: re.Match[str]) -> str:
+        alt, src = match.group(1), rewrite_image(html.unescape(match.group(2)))
+        return alt if src is None else keep(_image_tag(alt, src))
+
+    escaped = _IMAGE.sub(image, escaped)
 
     def link(match: re.Match[str]) -> str:
         label, target = match.group(1), html.unescape(match.group(2))
@@ -138,7 +183,18 @@ def render_markdown(source: str, served: Collection[str] | None = None) -> Rende
     def flush_paragraph() -> None:
         nonlocal paragraph
         if paragraph:
-            out.append(f"<p>{inline(' '.join(paragraph))}</p>")
+            text = " ".join(paragraph)
+            alone = _IMAGE.fullmatch(text)
+            src = rewrite_image(html.unescape(alone.group(2))) if alone else None
+            if alone and src:
+                # A lone image is a figure, captioned with its alt text.
+                alt = html.escape(alone.group(1), quote=False)
+                caption = f"<figcaption>{inline(alone.group(1))}</figcaption>" if alt else ""
+                out.append(
+                    f'<figure class="lv-help-figure">{_image_tag(alt, src)}{caption}</figure>'
+                )
+            else:
+                out.append(f"<p>{inline(text)}</p>")
             paragraph = []
 
     def close_lists(to_indent: int = -1) -> None:

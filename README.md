@@ -23,8 +23,8 @@ the model produced and export the result for training.
   `vistlabel auth`.
 
 **How to use the application** is described in
-[`docs/user-guide.md`](docs/user-guide.md); the same page is served inside
-the application under **Help**, together with the keyboard shortcuts. This
+[`docs/user-guide.md`](docs/user-guide.md); the same page, with its screenshots and the keyboard
+shortcuts, is served inside the application under **Help**. This
 file covers installation and starting the server.
 
 ## Prerequisites
@@ -160,7 +160,7 @@ vistlabel serve --host 127.0.0.1 --port 9080
 
 Then open <http://127.0.0.1:9080>, sign in and follow the
 [user guide](docs/user-guide.md). Useful endpoints: `/` (UI), `/help` (the
-guides and shortcuts), `/api/v1/health`, `/api/v1/version`,
+user guide), `/api/v1/health`, `/api/v1/version`,
 `/api/v1/models`, `/api/v1/metrics`. Only `/login`, `/setup`,
 `/api/v1/health`, `/api/v1/version` and the static assets answer without a
 session; until an account exists, every page redirects to `/setup`, which
