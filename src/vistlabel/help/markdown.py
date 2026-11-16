@@ -8,8 +8,10 @@ GitHub-style anchor ids), paragraphs, fenced code blocks, inline code,
 bold/italic, links, images, ordered and
 unordered lists (nested by indentation), pipe tables, block quotes and
 horizontal rules. Whole-line HTML comments (the generated-section markers in
-``docs/user-guide.md``) are dropped, and ``<kbd>`` is the one inline tag
-kept.
+``docs/user-guide.md``) are dropped. The only HTML kept is ``<kbd>`` and a
+linked, sized image written exactly as
+``<a href="https://..."><img src="..." alt="..." width="N"></a>`` (the
+README's logos).
 
 Everything is HTML-escaped first, so documentation can never inject markup.
 A link to another ``*.md`` document becomes the local ``/help/<name>`` route
@@ -17,7 +19,8 @@ when that document is one of the served Help pages; a link to any other
 repository file (``../README.md``, ``../models/README.md``) is not reachable
 from the browser, so only its label is kept. Likewise an image is shown only
 when it lies in the documentation's ``images/`` folder (served by the
-``/help/images/<file>`` route); any other image is reduced to its alt text.
+``/help/images/<file>`` route) or in the application's static ``img/``
+folder; any other image is reduced to its alt text.
 An image that stands alone in its paragraph becomes a figure captioned with
 its alt text.
 """
@@ -63,6 +66,16 @@ IMAGE_NAME = re.compile(
     re.IGNORECASE,
 )
 _DOC_IMAGE = re.compile(r"^(?:\./)?(?:docs/)?images/([^/\\]+)$")
+#: A logo the repository README shows from the application's static folder.
+_STATIC_IMAGE = re.compile(r"^(?:\./)?src/vistlabel/static/img/([^/\\]+)$")
+#: The one HTML construct kept besides ``<kbd>``: a linked, sized image, as
+#: the README writes its logos (Markdown cannot size an image). Matched on
+#: the already escaped text, attributes in exactly this order.
+_HTML_LINKED_IMAGE = re.compile(
+    r'&lt;a href="(https?://[^"\s<>]+)"&gt;\s*'
+    r'&lt;img src="([^"\s]+)" alt="([^"]*)" (width|height)="(\d{1,4})"\s*/?&gt;\s*'
+    r"&lt;/a&gt;"
+)
 
 
 def slugify(text: str) -> str:
@@ -92,21 +105,26 @@ def rewrite_link(target: str, served: Collection[str] | None = None) -> str | No
 
 def rewrite_image(target: str) -> str | None:
     """Map an image target to its ``src``, or ``None`` when it is not a file
-    of the documentation's ``images/`` folder.
+    of the documentation's ``images/`` folder or of the static ``img/`` one.
 
     ``images/x.png``, ``./images/x.png`` and ``docs/images/x.png`` become
-    ``/help/images/x.png``; external, absolute and ``../`` targets are
-    refused, so the Help pages never load anything from elsewhere."""
+    ``/help/images/x.png``, and ``src/vistlabel/static/img/x.png`` (a logo
+    in the README) becomes ``/static/img/x.png``; external, absolute and
+    ``../`` targets are refused, so the pages never load anything from
+    elsewhere."""
     match = _DOC_IMAGE.match(target)
     if match and IMAGE_NAME.match(match.group(1)):
         return f"/help/images/{match.group(1)}"
+    match = _STATIC_IMAGE.match(target)
+    if match and IMAGE_NAME.match(match.group(1)):
+        return f"/static/img/{match.group(1)}"
     return None
 
 
-def _image_tag(alt: str, src: str) -> str:
+def _image_tag(alt: str, src: str, size: str = "") -> str:
     # ``alt`` is already HTML-escaped without quotes; escape it for an attribute.
     alt_attr = html.escape(html.unescape(alt), quote=True)
-    return f'<img src="{html.escape(src, quote=True)}" alt="{alt_attr}" loading="lazy" />'
+    return f'<img src="{html.escape(src, quote=True)}" alt="{alt_attr}"{size} loading="lazy" />'
 
 
 def render_inline(text: str, served: Collection[str] | None = None) -> str:
@@ -123,6 +141,17 @@ def render_inline(text: str, served: Collection[str] | None = None) -> str:
     # <kbd> is the one HTML tag the docs may use. Its content is already
     # escaped, so restoring just the tag pair cannot let markup through.
     escaped = _KBD.sub(lambda m: keep(f"<kbd>{m.group(1)}</kbd>"), escaped)
+
+    def linked_image(match: re.Match[str]) -> str:
+        href, target, alt, dimension, pixels = match.groups()
+        src = rewrite_image(html.unescape(target))
+        if src is None:
+            return alt
+        href_attr = html.escape(html.unescape(href), quote=True)
+        tag = _image_tag(alt, src, f' {dimension}="{pixels}"')
+        return keep(f'<a href="{href_attr}" rel="noopener" target="_blank">{tag}</a>')
+
+    escaped = _HTML_LINKED_IMAGE.sub(linked_image, escaped)
 
     def image(match: re.Match[str]) -> str:
         alt, src = match.group(1), rewrite_image(html.unescape(match.group(2)))

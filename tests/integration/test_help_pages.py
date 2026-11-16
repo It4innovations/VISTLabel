@@ -146,3 +146,33 @@ def test_annotation_workspace_opens_the_user_guide_in_a_new_tab(
     assert 'id="open-help-link"' in body
     assert 'href="/help/user-guide"' in body
     assert 'target="_blank"' in body
+
+
+def test_about_shows_the_readme_with_its_linked_logo(api_client: TestClient) -> None:
+    response = api_client.get("/about")
+
+    assert response.status_code == 200
+    body = response.text
+    assert '<a href="/about" class="active" aria-current="page">About</a>' in body
+    assert '<h2 id="acknowledgements">Acknowledgements</h2>' in body
+    assert '<a href="#acknowledgements">Acknowledgements</a>' in body
+    assert (
+        '<a href="https://tacr.gov.cz/" rel="noopener" target="_blank">'
+        '<img src="/static/img/tacr_logo_eng.png"'
+    ) in body
+    assert api_client.get("/static/img/tacr_logo_eng.png").status_code == 200
+
+
+def test_about_needs_a_session(anonymous_client: TestClient) -> None:
+    assert anonymous_client.get("/about", follow_redirects=False).status_code == 303
+
+
+def test_header_logos_link_to_their_owners(api_client: TestClient) -> None:
+    for path in ("/", "/help", "/about"):
+        body = api_client.get(path).text
+        for site, logo in (
+            (r"https://www\.it4i\.cz/", r"it4i-logo\.png"),
+            (r"https://tacr\.gov\.cz/", r"tacr_logo_eng\.png"),
+        ):
+            assert re.search(rf'<a\s+href="{site}"[^>]*>\s*<img[^>]*{logo}', body), (path, site)
+        assert '<a href="/about"' in body

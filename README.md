@@ -310,8 +310,9 @@ MIT, Copyright (c) 2026 IT4Innovations, VSB-Technical University of
 Ostrava (see [`LICENSE`](LICENSE)).
 
 The MIT license covers the VISTLabel source code only. The IT4Innovations
-logo (`src/vistlabel/static/img/it4i-logo.png`) is a trademark of
-IT4Innovations and is not licensed under MIT.
+logo (`src/vistlabel/static/img/it4i-logo.png`) and the Technology Agency
+of the Czech Republic logo (`src/vistlabel/static/img/tacr_logo_eng.png`)
+are trademarks of their respective owners and are not licensed under MIT.
 
 Third-party components are not part of this repository and keep their own
 licenses:
@@ -334,3 +335,7 @@ licenses:
 
 This work was supported by the Ministry of Education, Youth and Sports of
 the Czech Republic through the e-INFRA CZ (ID:90254).
+
+<a href="https://tacr.gov.cz/"><img src="src/vistlabel/static/img/tacr_logo_eng.png" alt="Technology Agency of the Czech Republic" width="110"></a>
+
+This software VISTLabel was created with support from the state budget by the Technology Agency of the Czech Republic and the Ministry of Industry and Trade within the TREND Programme, Project No. FW12010084.

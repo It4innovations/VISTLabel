@@ -40,7 +40,7 @@ VISTLabel/
 │  ├─ api/ auth/ annotations/ diagnostics/ domain/ exports/ help/ imports/
 │  ├─ jobs/ persistence/ projects/ segmentation/ tracking/ validation/ video/
 │  ├─ templates/               # Jinja2 HTML
-│  └─ static/                  # css/, js/, help/shortcuts.json, img/it4i-logo.png
+│  └─ static/                  # css/, js/, help/shortcuts.json, img/ (logos)
 └─ tests/
    ├─ conftest.py              # throwaway account, signed-in clients, ffmpeg fixture
    ├─ fixtures/                # tiny_test_video.mp4 (64×64, 10 frames), pipette_occlusion_video.mp4 (128×64, 20 frames)

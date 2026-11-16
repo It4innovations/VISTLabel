@@ -13,6 +13,8 @@ local converter in :mod:`vistlabel.help.markdown`, and
 files (no sub-directories, extensions in
 :data:`~vistlabel.help.markdown.IMAGE_TYPES`) are served, so no other file is
 reachable by name, and nothing here contacts the network.
+
+``/about`` renders the project ``README.md`` the same way.
 """
 
 from __future__ import annotations
@@ -114,6 +116,32 @@ def _respond(
             "asset_version": asset_version(),
         },
         status_code=status_code,
+    )
+
+
+def find_readme() -> Path | None:
+    """The project ``README.md``: a copy packaged next to the code, or the
+    repository's."""
+    package_root = Path(__file__).resolve().parent.parent
+    for candidate in (package_root / "README.md", package_root.parents[1] / "README.md"):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+@router.get("/about", response_class=HTMLResponse)
+def about(request: Request) -> HTMLResponse:
+    path = find_readme()
+    rendered = _render_cached(path, path.stat().st_mtime_ns) if path else None
+    return templates.TemplateResponse(
+        request,
+        "about.html",
+        {
+            "html": rendered.html if rendered else "",
+            "headings": [h for h in rendered.headings if h.level == 2] if rendered else [],
+            "asset_version": asset_version(),
+        },
+        status_code=200 if rendered else 404,
     )
 
 

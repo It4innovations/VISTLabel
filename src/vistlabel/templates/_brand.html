@@ -1,0 +1,25 @@
+{# Copyright (c) 2026 IT4Innovations, VSB-Technical University of Ostrava
+   SPDX-License-Identifier: MIT #}
+{# The partner logos at the left of every page header, each linking to its
+   owner's site in a new tab. #}
+<div class="lv-brand">
+  <a href="https://www.it4i.cz/" target="_blank" rel="noopener" title="IT4Innovations">
+    <img
+      class="lv-brand-logo"
+      src="{{ url_for('static', path='img/it4i-logo.png') }}"
+      alt="IT4Innovations"
+    />
+  </a>
+  <a
+    href="https://tacr.gov.cz/"
+    target="_blank"
+    rel="noopener"
+    title="Technology Agency of the Czech Republic"
+  >
+    <img
+      class="lv-brand-logo lv-brand-logo-tall"
+      src="{{ url_for('static', path='img/tacr_logo_eng.png') }}"
+      alt="Technology Agency of the Czech Republic"
+    />
+  </a>
+</div>

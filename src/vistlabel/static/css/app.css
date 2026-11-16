@@ -147,9 +147,15 @@ a:hover {
   display: flex;
   align-items: center;
   height: 100%;
+  gap: 14px;
   padding-right: 16px;
   margin-right: 16px;
   border-right: 1px solid var(--lv-border);
+}
+
+.lv-brand a {
+  display: flex;
+  align-items: center;
 }
 
 /* The asset is a wide transparent PNG (1447x200); height-constrain it and
@@ -158,6 +164,12 @@ a:hover {
   height: 26px;
   width: auto;
   display: block;
+}
+
+/* A portrait logo (the TA CR mark, 1026x1500) needs more of the header's
+   height than the wide one to stay recognisable. */
+.lv-brand-logo-tall {
+  height: 38px;
 }
 
 .lv-logo {

@@ -11,17 +11,12 @@
 </head>
 <body>
   <header class="lv-header">
-    <a class="lv-brand" href="https://blender.it4i.cz/" target="_blank" rel="noopener">
-      <img
-        class="lv-brand-logo"
-        src="{{ url_for('static', path='img/it4i-logo.png') }}"
-        alt="IT4Innovations"
-      />
-    </a>
+    {% include "_brand.html" %}
     <span class="lv-logo">VISTLabel</span>
     <nav class="lv-nav">
       <a href="/" class="active">Projects</a>
       <a href="/help" id="open-help-link">Help</a>
+      <a href="/about" id="open-about-link">About</a>
     </nav>
     <div class="lv-header-right">
       {% if request.state.session %}<span class="lv-user" id="current-user">{{ request.state.session.username }}</span>

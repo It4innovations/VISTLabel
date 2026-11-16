@@ -234,3 +234,38 @@ def test_every_image_of_the_served_pages_exists() -> None:
         assert sources, name
         for source in sources:
             assert (DOCS / "images" / source).is_file(), source
+
+
+def test_a_static_logo_is_shown_from_the_static_folder() -> None:
+    assert rewrite_image("src/vistlabel/static/img/x.png") == "/static/img/x.png"
+    assert rewrite_image("src/vistlabel/static/img/../x.png") is None
+    assert rewrite_image("src/vistlabel/static/js/x.png") is None
+
+
+def test_a_linked_sized_html_image_is_kept() -> None:
+    html = render_markdown(
+        '<a href="https://tacr.gov.cz/"><img src="src/vistlabel/static/img/tacr_logo_eng.png"'
+        ' alt="TA CR" width="110"></a>'
+    ).html
+
+    assert html == (
+        '<p><a href="https://tacr.gov.cz/" rel="noopener" target="_blank">'
+        '<img src="/static/img/tacr_logo_eng.png" alt="TA CR" width="110" loading="lazy" />'
+        "</a></p>"
+    )
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        '<a href="javascript:alert(1)"><img src="images/x.png" alt="x" width="10"></a>',
+        '<a href="https://e.com/" onclick="x()"><img src="images/x.png" alt="x" width="10"></a>',
+        '<a href="https://e.com/"><img src="https://e.com/x.png" alt="x" width="10"></a>',
+        '<a href="https://e.com/"><img src="images/x.png" onerror="x()" alt="x" width="10"></a>',
+    ],
+)
+def test_any_other_html_stays_escaped_or_loses_its_image(source: str) -> None:
+    html = render_markdown(source).html
+
+    assert "<img" not in html
+    assert "<a " not in html
