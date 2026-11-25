@@ -218,7 +218,7 @@ All endpoints except those marked *public* require a session cookie. All state-c
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/projects/{p}/frames/{i}/annotations` | `FrameAnnotation` (empty default if never touched) |
-| PATCH | `/api/v1/projects/{p}/frames/{i}/annotations` | One revision-checked change set: `review_status`, `review_comment`, `upsert_object` (PNG mask + source, confidence, `manually_modified`, provenance), `remove_object_id`, `deactivate_object_id`, `activate_object_id`, `excluded`, `occlusion_edges` |
+| PATCH | `/api/v1/projects/{p}/frames/{i}/annotations` | One revision-checked change set: `review_status`, `review_comment`, `upsert_object` (PNG mask + source, confidence, `manually_modified`, provenance), `remove_object_id`, `deactivate_object_id`, `activate_object_id`, `all_objects_active` (`false` deactivates every object on the frame, `true` activates every inactive one), `excluded`, `occlusion_edges` |
 | GET | `/api/v1/projects/{p}/frames/{i}/objects/{o}/mask.png` | Saved mask of one object as PNG |
 | POST | `/api/v1/projects/{p}/frames/mark-annotated-reviewed` | Mark annotated frames reviewed (`dry_run` returns the counts only) |
 | GET | `/api/v1/projects/{p}/review-queue` | Flagged frames with object, reasons, comment |

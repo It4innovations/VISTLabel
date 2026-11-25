@@ -1453,6 +1453,32 @@ async function toggleObjectActiveOnFrame(objectId) {
   );
 }
 
+// Shift+D: deactivate every object on this frame, or -- when none is active
+// any more -- activate them all again. One request, so one revision.
+async function toggleAllObjectsActiveOnFrame() {
+  const frame = state.frameAnnotation;
+  if (!frame) return;
+  const activate = frame.objects.length === 0;
+  const affected = (activate ? frame.inactive_objects : frame.objects) || [];
+  if (affected.length === 0) {
+    setStatus(`No object on frame ${state.currentFrame} to deactivate`);
+    return;
+  }
+  const frameIndex = state.currentFrame;
+  const updated = await apiJson(
+    "PATCH", `/api/v1/projects/${projectId}/frames/${frameIndex}/annotations`,
+    { expected_revision: frame.revision, all_objects_active: activate }
+  );
+  for (const o of affected) state.viewHidden.delete(`${frameIndex}:${o.object_id}`);
+  // Reloading redraws every mask and box from what the server now has.
+  if (state.currentFrame === frameIndex) await loadFrame(frameIndex);
+  panels.refreshReviewQueue();
+  setStatus(
+    `${activate ? "Activated" : "Deactivated"} ${affected.length} object(s) on frame `
+    + `${frameIndex} (revision ${updated.revision})`
+  );
+}
+
 // "Delete frame": the frame drops out of exports and the review queue; its
 // masks stay, so Restore is lossless (see FrameAnnotation.excluded).
 async function toggleFrameExcluded() {
@@ -2438,7 +2464,11 @@ window.addEventListener("keydown", (event) => {
       if (state.selectedObjectId) toggleObjectViewHidden(state.selectedObjectId);
       break;
     case "d": case "D":
-      if (state.selectedObjectId) {
+      if (event.shiftKey) {
+        toggleAllObjectsActiveOnFrame().catch(
+          (error) => setStatus(`Could not (de)activate: ${error.detail || error.message}`)
+        );
+      } else if (state.selectedObjectId) {
         toggleObjectActiveOnFrame(state.selectedObjectId).catch(
           (error) => setStatus(`Could not (de)activate: ${error.detail || error.message}`)
         );

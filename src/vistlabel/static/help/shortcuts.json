@@ -74,6 +74,12 @@
       "description": "Deactivate / activate the selected object on this frame (leaves it out of the export)"
     },
     {
+      "id": "frame.deactivate_all",
+      "keys": "Shift+D",
+      "scope": "workspace",
+      "description": "Deactivate every object on this frame; when none is active, activate them all again"
+    },
+    {
       "id": "frame.mark_reviewed",
       "keys": "R",
       "scope": "workspace",

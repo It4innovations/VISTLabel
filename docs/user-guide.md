@@ -162,7 +162,7 @@ Hover over the name to see why a frame was flagged for review.
 
 ### Per-frame controls
 
-These act on one object on the current frame only:
+These act on the current frame only:
 
 - **Hide / Show** (<kbd>H</kbd>) stops drawing the mask on this frame.
   This is view only: the mask is still saved and exported.
@@ -170,6 +170,9 @@ These act on one object on the current frame only:
   frame and out of its export, for example when it has left the view. The
   mask is kept, so **Activate** restores it exactly. A propagation run
   over the frame replaces it with the propagated mask.
+- <kbd>Shift</kbd>+<kbd>D</kbd> deactivates every object on this frame
+  at once, for example to propagate only the one you activate again. When
+  no object is active, it activates them all.
 
 ### Object-wide controls
 
@@ -485,6 +488,7 @@ arrow keys move the slider then.
 | `A / 5` | workspace | Axis hint tool |
 | `H` | workspace | Hide / show the selected object's mask on this frame (view only, still exported) |
 | `D` | workspace | Deactivate / activate the selected object on this frame (leaves it out of the export) |
+| `Shift+D` | workspace | Deactivate every object on this frame; when none is active, activate them all again |
 | `R` | workspace | Mark the current frame reviewed |
 | `Shift+Click` | canvas | With a point tool: add a separate visible part to the selected object's mask |
 | `Right-drag` | canvas | With the brush: erase instead of paint |
