@@ -1786,6 +1786,13 @@ els.canvas.addEventListener("pointerdown", (event) => {
       setStatus("Select or create an object first");
       return;
     }
+    // A deactivated object's mask is kept server-side but not loaded here,
+    // so a stroke would start from a blank canvas and save that over it --
+    // the kept mask (which Activate restores) would be lost for good.
+    if (isInactiveOnFrame(state.selectedObjectId)) {
+      setStatus("This object is deactivated on this frame -- press D to activate it before painting");
+      return;
+    }
     pushUndoSnapshot();
     state.isPainting = true;
     state.strokeErases = state.tool === "eraser" || event.button === 2;

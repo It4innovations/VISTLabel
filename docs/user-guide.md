@@ -285,6 +285,9 @@ Each stroke is saved when you release the mouse. A brush-edited mask
 counts as manually edited: propagation won't overwrite it, and the
 **Manually edited only** export option picks exactly those frames.
 
+Brush and eraser don't work on an object deactivated on the frame; press
+<kbd>D</kbd> to activate it first.
+
 ![Mask corrected with the brush](images/07-brush.png)
 
 ## Undo and redo
