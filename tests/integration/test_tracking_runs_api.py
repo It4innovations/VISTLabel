@@ -165,6 +165,7 @@ def test_manual_mask_is_protected_from_propagation_overwrite(
             "start_frame": 0,
             "end_frame": 5,
             "direction": "forward",
+            "overwrite_manual_masks": False,
         },
     )
     job_id = response.json()["job_id"]
@@ -181,7 +182,125 @@ def test_manual_mask_is_protected_from_propagation_overwrite(
     assert run_record["manual_masks_protected_count"] >= 1
 
 
-def test_manual_mask_overwritten_when_explicitly_requested(
+def _save_manual_mask(
+    api_client: TestClient, project_id: str, object_id: str, frame_index: int
+) -> dict:
+    response = api_client.patch(
+        f"/api/v1/projects/{project_id}/frames/{frame_index}/annotations",
+        json={
+            "expected_revision": 0,
+            "upsert_object": {
+                "object_id": object_id,
+                "label_id": 3,
+                "visible_mask_png_base64": _seed_mask_png(
+                    api_client, project_id, object_id, frame_index
+                ),
+                "source": "manual_brush",
+                "manually_modified": True,
+            },
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_progress_advances_over_protected_frames(
+    api_client: TestClient, ffmpeg_binaries: FfmpegBinaries, monkeypatch
+) -> None:
+    """A run whose every frame is kept writes nothing, but must still report
+    progress -- it used to sit at 0% and then jump to 100%."""
+    project_id = create_project_with_video(api_client, "protected progress test")["project_id"]
+    object_id = _create_object(api_client, project_id)
+    _seed_object(api_client, project_id, object_id)
+    _save_manual_mask(api_client, project_id, object_id, 1)
+    _save_manual_mask(api_client, project_id, object_id, 2)
+
+    job_manager = api_client.app.state.job_manager
+    reported: list[float] = []
+    original = job_manager.report_progress
+
+    def spy(project: str, job: str, fraction: float) -> None:
+        reported.append(fraction)
+        original(project, job, fraction)
+
+    monkeypatch.setattr(job_manager, "report_progress", spy)
+
+    response = api_client.post(
+        f"/api/v1/projects/{project_id}/propagate",
+        json={
+            "backend_id": "fake",
+            "object_ids": [object_id],
+            "start_frame": 0,
+            "end_frame": 2,
+            "direction": "forward",
+            "overwrite_manual_masks": False,
+        },
+    )
+    assert response.status_code == 202, response.text
+    job_record = _wait_for_job(api_client, project_id, response.json()["job_id"])
+    assert job_record["status"] == "succeeded"
+
+    run_record = api_client.get(
+        f"/api/v1/projects/{project_id}/tracking-runs/{response.json()['run_id']}"
+    ).json()
+    assert run_record["manual_masks_protected_count"] == 2
+    assert reported and reported[-1] == 1.0
+
+
+def test_start_frame_seed_is_never_overwritten(
+    api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    project_id = create_project_with_video(api_client, "seed kept test")["project_id"]
+    object_id = _create_object(api_client, project_id)
+    seed = _save_manual_mask(api_client, project_id, object_id, 0)["objects"][0]
+
+    response = api_client.post(
+        f"/api/v1/projects/{project_id}/propagate",
+        json={
+            "backend_id": "fake",
+            "object_ids": [object_id],
+            "start_frame": 0,
+            "end_frame": 3,
+            "direction": "forward",
+        },
+    )
+    assert response.status_code == 202, response.text
+    job_record = _wait_for_job(api_client, project_id, response.json()["job_id"])
+    assert job_record["status"] == "succeeded", job_record["error"]
+
+    frame0 = api_client.get(f"/api/v1/projects/{project_id}/frames/0/annotations").json()
+    assert frame0["objects"] == [seed]
+    frame3 = api_client.get(f"/api/v1/projects/{project_id}/frames/3/annotations").json()
+    assert frame3["objects"][0]["source"] == "fake_propagation"
+
+
+def test_object_deactivated_on_the_start_frame_is_rejected(
+    api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    project_id = create_project_with_video(api_client, "inactive start test")["project_id"]
+    object_id = _create_object(api_client, project_id)
+    saved = _save_manual_mask(api_client, project_id, object_id, 0)
+    deactivated = api_client.patch(
+        f"/api/v1/projects/{project_id}/frames/0/annotations",
+        json={"expected_revision": saved["revision"], "deactivate_object_id": object_id},
+    )
+    assert deactivated.status_code == 200, deactivated.text
+
+    response = api_client.post(
+        f"/api/v1/projects/{project_id}/propagate",
+        json={
+            "backend_id": "fake",
+            "object_ids": [object_id],
+            "start_frame": 0,
+            "end_frame": 3,
+            "direction": "forward",
+        },
+    )
+    assert response.status_code == 422
+    assert "deactivated on start frame 0" in response.json()["detail"]
+
+
+def test_manual_mask_in_the_range_is_overwritten_by_default(
     api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
 ) -> None:
     project_id = create_project_with_video(api_client, "manual mask override test")[
@@ -213,7 +332,6 @@ def test_manual_mask_overwritten_when_explicitly_requested(
             "start_frame": 0,
             "end_frame": 5,
             "direction": "forward",
-            "overwrite_manual_masks": True,
         },
     )
     job_id = response.json()["job_id"]
@@ -225,7 +343,7 @@ def test_manual_mask_overwritten_when_explicitly_requested(
     assert entry["source"] == "fake_propagation"
 
 
-def test_object_inactive_on_a_frame_stays_inactive_through_propagation(
+def test_object_inactive_on_a_frame_stays_inactive_when_not_overwriting(
     api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
 ) -> None:
     project_id = create_project_with_video(api_client, "inactive object propagation test")[
@@ -259,6 +377,7 @@ def test_object_inactive_on_a_frame_stays_inactive_through_propagation(
             "start_frame": 0,
             "end_frame": 5,
             "direction": "forward",
+            "overwrite_manual_masks": False,
         },
     )
     job_record = _wait_for_job(api_client, project_id, response.json()["job_id"])
@@ -269,6 +388,38 @@ def test_object_inactive_on_a_frame_stays_inactive_through_propagation(
     assert [o["object_id"] for o in frame3["inactive_objects"]] == [object_id]
     frame4 = api_client.get(f"/api/v1/projects/{project_id}/frames/4/annotations").json()
     assert [o["object_id"] for o in frame4["objects"]] == [object_id]
+
+
+def test_object_inactive_on_a_frame_in_the_range_is_overwritten_by_default(
+    api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    project_id = create_project_with_video(api_client, "inactive overwrite test")["project_id"]
+    object_id = _create_object(api_client, project_id)
+    _seed_object(api_client, project_id, object_id)
+    saved = _save_manual_mask(api_client, project_id, object_id, 3)
+    api_client.patch(
+        f"/api/v1/projects/{project_id}/frames/3/annotations",
+        json={"expected_revision": saved["revision"], "deactivate_object_id": object_id},
+    )
+
+    response = api_client.post(
+        f"/api/v1/projects/{project_id}/propagate",
+        json={
+            "backend_id": "fake",
+            "object_ids": [object_id],
+            "start_frame": 0,
+            "end_frame": 5,
+            "direction": "forward",
+        },
+    )
+    job_record = _wait_for_job(api_client, project_id, response.json()["job_id"])
+    assert job_record["status"] == "succeeded"
+
+    frame3 = api_client.get(f"/api/v1/projects/{project_id}/frames/3/annotations").json()
+    assert frame3["inactive_objects"] == []
+    assert [(o["object_id"], o["source"]) for o in frame3["objects"]] == [
+        (object_id, "fake_propagation")
+    ]
 
 
 def _seed_mask_png(

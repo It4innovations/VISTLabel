@@ -519,7 +519,7 @@ def _chunk_ranges(
             current = chunk_end
 ```
 
-`src/vistlabel/api/propagation.py`, lines 137–166 and 216–238 (run loop, abridged between the two ranges)
+`src/vistlabel/api/propagation.py`, lines 142–190 and 240–262 (run loop, abridged between the two ranges)
 
 ```python
     try:
@@ -534,6 +534,19 @@ def _chunk_ranges(
                 session_id, object_ids, chunk_start, chunk_end, direction
             ):
                 context.raise_if_cancelled()
+                if prediction.frame_index == seed_frame:
+                    # The seed is what the run propagates *from*; the
+                    # model's echo of it must not replace the user's mask.
+                    # It is still the reference the next frame is compared
+                    # with for the temporal review reasons.
+                    previous_by_object[prediction.object_id] = previous_frame_context(
+                        prediction.visible_mask, prediction.component_count
+                    )
+                    completed_frames += 1
+                    job_manager.report_progress(
+                        project_id, context.job_id, min(1.0, completed_frames / total_predictions)
+                    )
+                    continue
                 label_id = label_by_object[prediction.object_id]
                 previous = previous_by_object.get(prediction.object_id)
 
@@ -551,6 +564,12 @@ def _chunk_ranges(
                 if (inactive_here or manual_here) and not overwrite_manual_masks:
                     manual_protected += 1
                     completed_frames += 1
+                    # A skipped frame is still progress: the model ran on
+                    # it. Without this a range of hand-edited frames sat at
+                    # 0% and then jumped straight to 100%.
+                    job_manager.report_progress(
+                        project_id, context.job_id, min(1.0, completed_frames / total_predictions)
+                    )
                     continue
 ```
 
@@ -580,7 +599,7 @@ def _chunk_ranges(
     manifests.update_run(pdir, manifest_run_id, status=TrackingRunStatus.COMPLETED)
 ```
 
-**Explanation.** The run loop is the heart of FR-PRP: pause is honoured only at chunk boundaries (so a paused run always has a clean checkpoint), cancel also between predictions. A frame where the object was edited by hand or deactivated is skipped and counted, never overwritten, unless the run was explicitly started with `overwrite_manual_masks`. Lines 168–214 (omitted) compute the review reasons and write the propagated mask with `apply_frame_annotation`. The manifest update after each chunk is the checkpoint used by resume; the exception handlers keep the manifest status in step with the job status set by `JobManager`.
+**Explanation.** The run loop is the heart of FR-PRP: pause is honoured only at chunk boundaries (so a paused run always has a clean checkpoint), cancel also between predictions. The start frame is the seed: its prediction only primes the temporal review checks and is never written. Other frames in the range are overwritten, hand-edited and deactivated entries included; a run started with `overwrite_manual_masks: false` skips and counts those instead, still reporting progress for them. Lines 192–238 (omitted) compute the review reasons and write the propagated mask with `apply_frame_annotation`. The manifest update after each chunk is the checkpoint used by resume; the exception handlers keep the manifest status in step with the job status set by `JobManager`.
 
 ### Excerpt 8 – Schema migration interface
 
