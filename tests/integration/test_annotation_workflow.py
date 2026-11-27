@@ -366,3 +366,58 @@ def test_changing_an_objects_class_relabels_it_on_every_frame(
     assert {o["object_id"]: o["label_id"] for o in frame0["objects"]} == {tube: 1, other: 0}
     frame1 = api_client.get(f"/api/v1/projects/{project_id}/frames/1/annotations").json()
     assert [(o["object_id"], o["label_id"]) for o in frame1["inactive_objects"]] == [(tube, 1)]
+
+
+def test_all_objects_active_deactivates_and_restores_the_whole_frame(
+    api_client: TestClient, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    """Shift+D: every object on the frame moves to inactive_objects in one
+    revision, and back again with its exact mask."""
+    project_id = create_project_with_video(api_client, "deactivate all")["project_id"]
+    url = f"/api/v1/projects/{project_id}/frames/0/annotations"
+    ids = [_create_object(api_client, project_id)["object_id"] for _ in range(3)]
+    for index, object_id in enumerate(ids):
+        mask_png = api_client.post(
+            f"/api/v1/projects/{project_id}/segment",
+            json={
+                "backend_id": "fake",
+                "frame_index": 0,
+                "object_id": object_id,
+                "points": [{"x": 10 + index * 20, "y": 10, "positive": True}],
+            },
+        ).json()["visible_mask_png_base64"]
+        saved = api_client.patch(
+            url,
+            json={
+                "expected_revision": api_client.get(url).json()["revision"],
+                "upsert_object": {
+                    "object_id": object_id,
+                    "label_id": 3,
+                    "visible_mask_png_base64": mask_png,
+                    "source": "fake_interactive",
+                },
+            },
+        )
+        assert saved.status_code == 200, saved.text
+    # One object already inactive: it stays in the list, not duplicated.
+    first = api_client.patch(
+        url,
+        json={"expected_revision": saved.json()["revision"], "deactivate_object_id": ids[0]},
+    ).json()
+    masks = {o["object_id"]: o["visible_mask_rle"] for o in first["inactive_objects"]}
+    masks |= {o["object_id"]: o["visible_mask_rle"] for o in first["objects"]}
+
+    off = api_client.patch(
+        url, json={"expected_revision": first["revision"], "all_objects_active": False}
+    )
+    assert off.status_code == 200, off.text
+    assert off.json()["revision"] == first["revision"] + 1
+    assert off.json()["objects"] == []
+    assert sorted(o["object_id"] for o in off.json()["inactive_objects"]) == sorted(ids)
+
+    on = api_client.patch(
+        url, json={"expected_revision": off.json()["revision"], "all_objects_active": True}
+    )
+    assert on.status_code == 200, on.text
+    assert on.json()["inactive_objects"] == []
+    assert {o["object_id"]: o["visible_mask_rle"] for o in on.json()["objects"]} == masks

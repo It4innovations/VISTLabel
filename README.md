@@ -13,7 +13,7 @@ the model produced and export the result for training.
   brush and eraser, multi-part objects through occlusions, optional
   YOLO + SAM automatic pre-annotation.
 - Chunked, checkpointed video propagation that can be paused, resumed and
-  survives restarts. It never overwrites hand-edited masks.
+  survives restarts.
 - Review queue for doubtful frames, train / val / excluded splits, and
   export to Ultralytics YOLO or COCO (RF-DETR layout), as masks or boxes.
 - Filesystem projects, atomic writes, schema migrations; everything stays on

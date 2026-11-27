@@ -218,7 +218,7 @@ All endpoints except those marked *public* require a session cookie. All state-c
 | Method | Path | Purpose |
 | --- | --- | --- |
 | GET | `/api/v1/projects/{p}/frames/{i}/annotations` | `FrameAnnotation` (empty default if never touched) |
-| PATCH | `/api/v1/projects/{p}/frames/{i}/annotations` | One revision-checked change set: `review_status`, `review_comment`, `upsert_object` (PNG mask + source, confidence, `manually_modified`, provenance), `remove_object_id`, `deactivate_object_id`, `activate_object_id`, `excluded`, `occlusion_edges` |
+| PATCH | `/api/v1/projects/{p}/frames/{i}/annotations` | One revision-checked change set: `review_status`, `review_comment`, `upsert_object` (PNG mask + source, confidence, `manually_modified`, provenance), `remove_object_id`, `deactivate_object_id`, `activate_object_id`, `all_objects_active` (`false` deactivates every object on the frame, `true` activates every inactive one), `excluded`, `occlusion_edges` |
 | GET | `/api/v1/projects/{p}/frames/{i}/objects/{o}/mask.png` | Saved mask of one object as PNG |
 | POST | `/api/v1/projects/{p}/frames/mark-annotated-reviewed` | Mark annotated frames reviewed (`dry_run` returns the counts only) |
 | GET | `/api/v1/projects/{p}/review-queue` | Flagged frames with object, reasons, comment |
@@ -303,7 +303,7 @@ The registry lists them in the order `sam21`, `sam3`, `yolo_sam`, `fake` (the UI
 2. **Re-seed.** For each requested object with a saved mask on the start frame: if that mask was *not* produced by propagation (`source` does not end in `_propagation`), call `forget_object` first; then `replace_object_mask` with the saved mask. A hand correction thus becomes the only seed, while continuing from a propagated mask keeps the tracker's memory.
 3. **Submit** a job; the work function creates the run manifest (`status=running`) and calls `_run_chunked_propagation`.
 4. **Chunking.** `_chunk_ranges(start, end, direction, chunk_frames)` yields `(chunk_start, chunk_end)` pairs advancing by `chunk_frames`; consecutive chunks share their boundary frame because the backend requires the start frame of each `propagate` call to be seeded, and only the previous chunk's last output satisfies that.
-5. **Per prediction:** check cancellation; load the frame file; **skip** if the object is deactivated on that frame or its existing entry is `manually_modified` (unless `overwrite_manual_masks`), counting it in `manual_masks_protected_count`; otherwise compute review reasons and write the entry (`source=<backend>_propagation`, `manually_modified=false`, occlusion state from the part count); a frame still `unreviewed` with any reason becomes `needs_review`. Progress = predictions done / (frames × objects), written at most every 0.5 s.
+5. **Per prediction:** check cancellation; the run's start frame is the seed and is never written (its prediction only primes the temporal checks); load the frame file; with `overwrite_manual_masks: false` (the default is `true`), **skip** the frame if the object is deactivated there or its existing entry is `manually_modified`, counting it in `manual_masks_protected_count`; otherwise compute review reasons and write the entry (`source=<backend>_propagation`, `manually_modified=false`, occlusion state from the part count); a frame still `unreviewed` with any reason becomes `needs_review`. Progress = predictions done / (frames × objects), written at most every 0.5 s.
 6. **Checkpoint:** after a chunk completes, `last_completed_frame = chunk_end` and the protected count are saved in the manifest.
 7. **Pause** is checked before each chunk (`JobPaused` → run `paused`, job `paused`); **cancel** is checked before each chunk and each prediction (`JobCancelled` → `cancelled`); any other exception → `failed` with the message (and `torch.cuda.empty_cache()` if available). After the last chunk the run is `completed` and the job `succeeded`.
 8. **Resume** (`…/resume`, allowed from `paused` or `interrupted`): re-seeds each object from its saved mask on `last_completed_frame` (or `start_frame`) – refused with 409 if an object has no saved mask there – and submits a new job attempt for the same `run_id` from that frame.
@@ -338,8 +338,8 @@ Temporal reasons are evaluated against the previous prediction of the same objec
 
 | Situation | Rule |
 | --- | --- |
-| Hand-edited mask in the propagation range | Kept; propagation skips it unless `overwrite_manual_masks: true` |
-| Object deactivated on a frame | Kept inactive; propagation skips it |
+| Hand-edited or deactivated mask in the propagation range | Replaced by the propagated mask (kept only with `overwrite_manual_masks: false`); the start frame's seed is never replaced |
+| Object deactivated on the start frame | Not propagated; the request is rejected with 422 |
 | New mask for an object that is inactive on the frame | The stale inactive entry is dropped (`_drop_superseded_inactive`) |
 | Two editors save the same frame | Second save with an old `expected_revision` → HTTP 409 |
 | Propagation vs. editor on the same frame | Propagation writes unconditionally (no revision check); the editor's next save conflicts (409) and reloads |

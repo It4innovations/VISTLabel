@@ -69,6 +69,9 @@ class FrameAnnotationPatchRequest(BaseModel):
     #: undoable.
     deactivate_object_id: str | None = None
     activate_object_id: str | None = None
+    #: Shift+D: False deactivates every object on the frame, True activates
+    #: every deactivated one -- in one revision, not one request per object.
+    all_objects_active: bool | None = None
     #: "Delete frame" (True) / restore it (False); see FrameAnnotation.excluded.
     excluded: bool | None = None
     #: Full replace, not a diff -- "Mark Occluder" sends the complete list
@@ -234,6 +237,14 @@ def patch_frame_annotations(
                 )
             inactive = [o for o in inactive if o is not entry]
             objects = [o for o in objects if o.object_id != object_id] + [entry]
+        if payload.all_objects_active is False:
+            moved = {o.object_id for o in objects}
+            inactive = [o for o in inactive if o.object_id not in moved] + objects
+            objects = []
+        elif payload.all_objects_active is True:
+            moved = {o.object_id for o in inactive}
+            objects = [o for o in objects if o.object_id not in moved] + inactive
+            inactive = []
         changes["objects"] = objects
         changes["inactive_objects"] = inactive
 

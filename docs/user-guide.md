@@ -162,14 +162,17 @@ Hover over the name to see why a frame was flagged for review.
 
 ### Per-frame controls
 
-These act on one object on the current frame only:
+These act on the current frame only:
 
 - **Hide / Show** (<kbd>H</kbd>) stops drawing the mask on this frame.
   This is view only: the mask is still saved and exported.
 - **Deactivate / Activate** (<kbd>D</kbd>) takes the object off this
   frame and out of its export, for example when it has left the view. The
-  mask is kept, so **Activate** restores it exactly. Propagation leaves an
-  inactive object inactive.
+  mask is kept, so **Activate** restores it exactly. A propagation run
+  over the frame replaces it with the propagated mask.
+- <kbd>Shift</kbd>+<kbd>D</kbd> deactivates every object on this frame
+  at once, for example to propagate only the one you activate again. When
+  no object is active, it activates them all.
 
 ### Object-wide controls
 
@@ -282,8 +285,12 @@ eraser). Change the radius in Appearance or with <kbd>Shift</kbd> + mouse
 wheel.
 
 Each stroke is saved when you release the mouse. A brush-edited mask
-counts as manually edited: propagation won't overwrite it, and the
-**Manually edited only** export option picks exactly those frames.
+counts as manually edited: the **Manually edited only** export option
+picks exactly those frames. A later propagation run over the frame does
+replace it.
+
+Brush and eraser don't work on an object deactivated on the frame; press
+<kbd>D</kbd> to activate it first.
 
 ![Mask corrected with the brush](images/07-brush.png)
 
@@ -309,13 +316,15 @@ video with the selected backend (SAM 2.1, SAM 3 or YOLO + SAM).
    **Backward** and the frame to stop at.
 3. Click **Run**.
 
-Every object that has a mask on the current frame is propagated, not only
-the selected one. The status shows the progress, and **Cancel** stops the
+Every object that is active on the current frame is propagated, not only
+the selected one. To leave an object out, deactivate it on this frame
+(<kbd>D</kbd>). The status shows the progress, and **Cancel** stops the
 run. Frames already written are kept.
 
-Propagation never overwrites a mask you edited with the brush or eraser,
-or an object you deactivated on a frame. Frames where the result looks
-doubtful, such as an object disappearing or reappearing, its area jumping,
+Propagation replaces the propagated objects' masks on every frame of the
+range, including ones you edited with the brush or eraser or deactivated.
+Only the current frame, the one it starts from, is left as it is. Frames
+where the result looks doubtful, such as an object disappearing or reappearing, its area jumping,
 or its part count changing, are flagged for [review](#review-queue).
 
 With **Notify** ticked, VISTLabel plays a short sound when a run finishes,
@@ -479,6 +488,7 @@ arrow keys move the slider then.
 | `A / 5` | workspace | Axis hint tool |
 | `H` | workspace | Hide / show the selected object's mask on this frame (view only, still exported) |
 | `D` | workspace | Deactivate / activate the selected object on this frame (leaves it out of the export) |
+| `Shift+D` | workspace | Deactivate every object on this frame; when none is active, activate them all again |
 | `R` | workspace | Mark the current frame reviewed |
 | `Shift+Click` | canvas | With a point tool: add a separate visible part to the selected object's mask |
 | `Right-drag` | canvas | With the brush: erase instead of paint |

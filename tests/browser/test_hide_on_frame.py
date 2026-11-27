@@ -80,6 +80,79 @@ def test_deactivate_then_activate_restores_the_mask_on_this_frame(
     expect(item).to_contain_text("[visible]", timeout=10_000)
 
 
+def test_shift_d_deactivates_and_activates_every_object_on_the_frame(
+    page: Page, live_server_url: str, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    project_id = create_project_via_requests(live_server_url, "browser deactivate all test")
+    _open_with_one_object(page, live_server_url, project_id)
+    _accept_mask(page)
+    page.fill("#new-object-label", "tube")
+    page.click("#add-object-button")
+    items = page.locator("#object-list li")
+    expect(items).to_have_count(2)
+    page.locator("#frame-canvas").click(position={"x": 60, "y": 40})
+    expect(page.locator("#accept-candidate-button")).to_be_enabled(timeout=10_000)
+    page.click("#accept-candidate-button")
+    expect(page.locator("#status-line")).to_contain_text("Saved", timeout=10_000)
+    saved = _frame(live_server_url, project_id)["objects"]
+    masks = {o["object_id"]: o["visible_mask_rle"] for o in saved}
+    assert len(masks) == 2
+    shown_pixels = page.evaluate(_CANVAS_PIXELS)
+
+    page.keyboard.press("Shift+D")
+    expect(page.locator("#status-line")).to_contain_text(
+        "Deactivated 2 object(s) on frame 0", timeout=10_000
+    )
+    for index in range(2):
+        expect(items.nth(index)).to_contain_text("[inactive]")
+    frame = _frame(live_server_url, project_id)
+    assert frame["objects"] == []
+    assert len(frame["inactive_objects"]) == 2
+
+    page.keyboard.press("Shift+D")
+    expect(page.locator("#status-line")).to_contain_text(
+        "Activated 2 object(s) on frame 0", timeout=10_000
+    )
+    for index in range(2):
+        expect(items.nth(index)).to_contain_text("[visible]")
+    frame = _frame(live_server_url, project_id)
+    assert frame["inactive_objects"] == []
+    assert {o["object_id"]: o["visible_mask_rle"] for o in frame["objects"]} == masks
+    assert page.evaluate(_CANVAS_PIXELS) == shown_pixels
+
+
+def test_brush_on_a_deactivated_object_keeps_its_kept_mask(
+    page: Page, live_server_url: str, ffmpeg_binaries: FfmpegBinaries
+) -> None:
+    project_id = create_project_via_requests(live_server_url, "browser brush inactive test")
+    _open_with_one_object(page, live_server_url, project_id)
+    item = page.locator("#object-list li")
+    _accept_mask(page)
+    saved_mask = _frame(live_server_url, project_id)["objects"][0]["visible_mask_rle"]
+
+    page.keyboard.press("d")
+    expect(item).to_contain_text("[inactive]", timeout=10_000)
+    before = _frame(live_server_url, project_id)
+
+    # Neither a right-click (erase) nor a left stroke (paint) may save a
+    # mask from the blank edit canvas over the kept one.
+    page.click('[data-tool="brush"]')
+    box = page.locator("#frame-canvas").bounding_box()
+    assert box is not None
+    x, y = box["x"] + 15, box["y"] + 15
+    for button in ("right", "left"):
+        page.mouse.move(x, y)
+        page.mouse.down(button=button)
+        page.mouse.move(x + 10, y + 10)
+        page.mouse.up(button=button)
+        expect(page.locator("#status-line")).to_contain_text("deactivated on this frame")
+    assert _frame(live_server_url, project_id) == before
+
+    page.keyboard.press("d")
+    expect(item).to_contain_text("[visible]", timeout=10_000)
+    assert _frame(live_server_url, project_id)["objects"][0]["visible_mask_rle"] == saved_mask
+
+
 def test_hide_is_view_only(
     page: Page, live_server_url: str, ffmpeg_binaries: FfmpegBinaries
 ) -> None:

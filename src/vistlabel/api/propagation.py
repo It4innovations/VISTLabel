@@ -14,10 +14,11 @@ work and offer safe resume or rollback.
 
 Automatic review-reason detection uses each object's frame-to-frame
 history within the propagation run: frame-local checks, temporal ones,
-abrupt centroid displacement and periodic review sampling. Manually
-modified masks are protected from silent overwrite by default --
-overwriting them requires an explicit ``overwrite_manual_masks: true`` on
-the request.
+abrupt centroid displacement and periodic review sampling. Only objects
+active on the start frame can be propagated; within the range their
+masks are replaced, hand-edited and deactivated ones included, unless the
+request sets ``overwrite_manual_masks: false``. The start frame itself is
+the seed and is never rewritten.
 """
 
 from __future__ import annotations
@@ -66,9 +67,11 @@ class PropagateRequest(BaseModel):
     direction: Literal["forward", "backward"] = "forward"
     #: Overrides ``tracking.default_chunk_frames`` for this run.
     chunk_frames: int | None = None
-    #: Propagation never overwrites a manually_modified mask
-    #: unless the caller opts in explicitly.
-    overwrite_manual_masks: bool = False
+    #: Propagating X -> Y means "redo these objects on X..Y": hand-edited
+    #: and deactivated entries in the range are replaced too. False keeps
+    #: them (counted in ``manual_masks_protected_count``). The start frame
+    #: is the seed and is never overwritten either way.
+    overwrite_manual_masks: bool = True
 
 
 class RunJobResponse(BaseModel):
@@ -132,7 +135,9 @@ def _run_chunked_propagation(
     # that.
     total_predictions = max(abs(end_frame - resume_start_frame) + 1, 1) * max(len(object_ids), 1)
     completed_frames = 0
-    manual_protected = manifests.get_run(pdir, manifest_run_id).manual_masks_protected_count
+    run = manifests.get_run(pdir, manifest_run_id)
+    manual_protected = run.manual_masks_protected_count
+    seed_frame = run.start_frame
 
     try:
         for chunk_start, chunk_end in _chunk_ranges(
@@ -146,6 +151,19 @@ def _run_chunked_propagation(
                 session_id, object_ids, chunk_start, chunk_end, direction
             ):
                 context.raise_if_cancelled()
+                if prediction.frame_index == seed_frame:
+                    # The seed is what the run propagates *from*; the
+                    # model's echo of it must not replace the user's mask.
+                    # It is still the reference the next frame is compared
+                    # with for the temporal review reasons.
+                    previous_by_object[prediction.object_id] = previous_frame_context(
+                        prediction.visible_mask, prediction.component_count
+                    )
+                    completed_frames += 1
+                    job_manager.report_progress(
+                        project_id, context.job_id, min(1.0, completed_frames / total_predictions)
+                    )
+                    continue
                 label_id = label_by_object[prediction.object_id]
                 previous = previous_by_object.get(prediction.object_id)
 
@@ -163,6 +181,12 @@ def _run_chunked_propagation(
                 if (inactive_here or manual_here) and not overwrite_manual_masks:
                     manual_protected += 1
                     completed_frames += 1
+                    # A skipped frame is still progress: the model ran on
+                    # it. Without this a range of hand-edited frames sat at
+                    # 0% and then jumped straight to 100%.
+                    job_manager.report_progress(
+                        project_id, context.job_id, min(1.0, completed_frames / total_predictions)
+                    )
                     continue
 
                 review_reasons = frame_local_review_reasons(
@@ -290,6 +314,21 @@ def start_propagation(
     # the memory, so continuing a run doesn't lose its original seed.
     existing = get_frame_annotation(pdir, payload.start_frame, timestamps[payload.start_frame])
     saved_by_object = {o.object_id: o for o in existing.objects}
+    # Only objects active on the start frame are propagated: deactivating
+    # one there is how the operator leaves it out of the run.
+    inactive_on_start = [
+        object_id
+        for object_id in payload.object_ids
+        if any(o.object_id == object_id for o in existing.inactive_objects)
+    ]
+    if inactive_on_start:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"object(s) deactivated on start frame {payload.start_frame} "
+                f"cannot be propagated: {', '.join(inactive_on_start)}"
+            ),
+        )
     for object_id in payload.object_ids:
         entry = saved_by_object.get(object_id)
         if entry is not None:
